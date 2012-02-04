@@ -1,5 +1,9 @@
 <?php
 
+function hook_perm() {
+  return array('administer Orphan Object Adminstration');
+}
+
 /**
 * Implementation of hook_menu()
 */
@@ -9,7 +13,7 @@ function orphan_object_menu() {
     'title' => t('Orphan Object Administration'),
     'page callback' => 'orphan_object_form',
 	'access callback' => 'user_access',
-    'access arguments' => array('administer orphan objects'),
+    'access arguments' => array('administer Orphan Object Adminstration'),
     'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
   );
   return $items;
