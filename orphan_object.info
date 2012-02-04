@@ -1,0 +1,4 @@
+name = Orphan Object Adminstration
+description = Used to find and activate or deactivate orpan objects in Fedora
+version = VERSION
+core = 6.x

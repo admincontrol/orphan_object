@@ -1,0 +1,59 @@
+<?php
+
+function orphan_object_access($perms) {
+  $allow = false;
+
+  foreach($perms as $perm) {
+    if (user_access($perm)) {
+      $allow = true;
+      break;
+    }
+  }
+  return $allow;
+}
+
+/**
+* Implementation of hook_menu()
+*/
+function orphan_object_menu() {
+  $items = array();
+  $items['admin/content/orphan-object'] = array(
+    'title' => t('Orphan Object Administration'),
+    'page callback' => 'orphan_object_form',
+	'access callback' => 'user_access',
+    'access arguments' => array('administer orphan objects'),
+    'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+* Generates a page for the form
+*/
+function orphan_object_form() {
+
+  // Form builder call to build the form
+  return drupal_get_form('orphan_object_formpage');
+
+}
+
+/**
+* Builds the orphan_object form
+*/
+function orphan_object_formpage($form_state) {
+   
+    // Fieldset to hold form contents
+  $form['orphans'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Orphan Objects'),
+  );
+  
+  // Button to save changes, currently not implemented
+  $form['save'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save Settings',
+  );
+  
+  return $form;
+}
