@@ -23,7 +23,6 @@ function orphan_object_menu() {
 	'access callback' => 'user_access',
     'access arguments' => array('administer orphan objects'),
     'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
-    'type' => MENU_SUGGESTED_ITEM,
   );
   return $items;
 }
