@@ -1,17 +1,5 @@
 <?php
 
-function orphan_object_access($perms) {
-  $allow = false;
-
-  foreach($perms as $perm) {
-    if (user_access($perm)) {
-      $allow = true;
-      break;
-    }
-  }
-  return $allow;
-}
-
 /**
 * Implementation of hook_menu()
 */
