@@ -43,7 +43,7 @@ function orphan_object_formpage($form_state) {
 
   foreach($orphans as $orphan)
   {
-    $checkboxes[$orphan['oid']] = ''; 
+    $active[$orphan['oid']] = ''; 
     $form[$orphan['oid']]['title'] = array 
     (
       '#value' => $orphan['title'],
@@ -56,7 +56,7 @@ function orphan_object_formpage($form_state) {
 	
   $form['active'] = array(
     '#type' => 'checkboxes',
-	'#options' => $checkboxes,
+	'#options' => $active,
   );
   
   // Button to save changes, currently not implemented
