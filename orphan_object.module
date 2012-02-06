@@ -57,7 +57,7 @@ function orphan_object_formpage($form_state) {
   $form['active'] = array(
     '#type' => 'checkboxes',
 	'#options' => $active,
-	'#default_value' = $active,
+	'#default_value' => $active,
   );
   
   $form['submit'] = array(
