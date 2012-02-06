@@ -61,10 +61,11 @@ function orphan_object_formpage($form_state) {
   );
   
   $form['submit'] = array(
-    '#type' => 'orphan_object_formpage_submit',
+    '#type' => 'submit',
 	'#value' => 'Save Configuration',
   );
   
+  $form['#submit'][] = 'orphan_object_formpage_submit';
   $form['#theme'] = 'orphan_object_theme'; 
   
   return $form;
