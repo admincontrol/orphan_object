@@ -58,7 +58,7 @@ function orphan_object_formpage($form_state) {
   $form['identifier2'] = array(
     '#value' => 'islandora:2221'
   );
-  $header = array((('Active'), t('Object Title'), t((Identifier'));
+  $header = array(('Active'), t('Object Title'), t((Identifier'));
   $rows = array(
     array(
 	  $form['active'], $form['title'], $form['identifier']
