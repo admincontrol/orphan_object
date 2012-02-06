@@ -48,7 +48,7 @@ function orphan_object_formpage($form_state) {
     (
       '#value' => $orphan['title'],
     );
-    $form[$user['oid']]['identifier'] = array 
+    $form[$orphan['oid']]['identifier'] = array 
     (
       '#value' => $orphan['identifier'],
     );
