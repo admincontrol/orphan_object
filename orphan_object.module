@@ -94,7 +94,7 @@ function theme_orphan_object_theme($form){
   
   if(count($rows))
   {
-    $header = array(theme('table_select_header_cell') , t('Active'), t('Object Title'), t('Identifier')); 
+    $header = array(theme('table_select_header_cell'), t('Object Title'), t('Identifier')); 
   }
   else
   {
