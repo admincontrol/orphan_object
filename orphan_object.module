@@ -37,8 +37,8 @@ function orphan_object_formpage($form_state) {
     // Fieldset to hold form contents
   $orphans = array
   (
-    array('oid' => 1, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>', 'identifier' => 'islandora:2216'),
-    array('oid' => 2, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>', 'identifier' => 'islandora:2221'),
+    array('oid' => 1, 'title' => '<p><a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>'</p>, 'identifier' => 'islandora:2216'),
+    array('oid' => 2, 'title' => '<p><a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>'</p>, 'identifier' => 'islandora:2221'),
   );
 
   foreach($orphans as $orphan)
@@ -94,7 +94,7 @@ function theme_orphan_object_theme($form){
   
   if(count($rows))
   {
-    $header = array(theme('table_select_header_cell'), t('Object Title'), t('Identifier')); 
+    $header = array(theme('table_select_header_cell') , t('Active'), t('Object Title'), t('Identifier')); 
   }
   else
   {
