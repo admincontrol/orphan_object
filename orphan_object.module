@@ -59,12 +59,6 @@ function orphan_object_formpage($form_state) {
 	'#options' => $active,
   );
   
-  // Button to save changes, currently not implemented
-  $output['save'] = array(
-    '#type' => 'submit',
-    '#value' => 'Save Settings',
-  );
-  
   $form['#theme'] = 'orphan_object_theme'; 
   
   return $form;
