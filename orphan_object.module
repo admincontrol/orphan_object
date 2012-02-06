@@ -59,7 +59,7 @@ function orphan_object_formpage($form_state) {
   $form['active'] = array(
     '#type' => 'checkboxes',
 	'#options' => $active,
-	'#default_value' => variable_get('orphan_object_formpage_input_field_values', $selected;
+	'#default_value' => variable_get('orphan_object_formpage_input_field_values', $selected);
   );
   
   $form['submit'] = array(
