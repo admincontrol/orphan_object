@@ -59,6 +59,11 @@ function orphan_object_formpage($form_state) {
 	'#options' => $active,
   );
   
+  $form['submit'] = array(
+    '#type' => 'submit',
+	'#value' => 'Save Settings',
+  );
+  
   $form['#theme'] = 'orphan_object_theme'; 
   
   return $form;
@@ -77,8 +82,7 @@ function orphan_object_theme(){
 function theme_orphan_object_theme($form){
   $rows = array();
 
-  foreach(element_children($form['active']) as $oid) 
-  {
+  foreach(element_children($form['active']) as $oid){
     $row = array(); 
     $row[] = drupal_render($form['active'][$oid]); 
     $row[] = drupal_render($form[$oid]['title']); 
@@ -86,12 +90,10 @@ function theme_orphan_object_theme($form){
     $rows[] = $row;
   }
   
-  if(count($rows))
-  {
-    $header = array(theme('table_select_header_cell') , t('Active'), t('Object Title'), t('Identifier')); 
+  if(count($rows)){
+    $header = array(t('Active'), t('Object Title'), t('Identifier')); 
   }
-  else
-  {
+  else{
     $header = array(t('Active'), t('Object Title'), t('Identifier')); 
     $row = array();
     $row[] = array
