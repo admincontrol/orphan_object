@@ -104,5 +104,6 @@ function theme_orphan_object_theme($form){
   }
   
   $output = theme('table', $header, $rows);
-  return $output . drupal_render($form); 
+  $output .=drupal_render($form);
+  return $output;  
 }
