@@ -35,39 +35,29 @@ function orphan_object_form() {
 function orphan_object_formpage($form_state) {
    
     // Fieldset to hold form contents
-  $form['active'] = array(
-    '#type' => 'checkbox'
+  $orphans = array
+  (
+    array('oid' => 1, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>'', 'identifier' => 'islandora:2216'),
+    array('oid' => 2, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>', 'identifier' => 'islandora:2221'),
   );
-  
-  $form['title'] = array(
-    '#value' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>'
-  );	
-  
-  $form['identifier'] = array(
-    '#value' => 'islandora:2216'
-  );
-  
-  $form['active2'] = array(
-    '#type' => 'checkbox'
-  );
-  
-  $form['title2'] = array(
-    '#value' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>'
-  );	
-  
-  $form['identifier2'] = array(
-    '#value' => 'islandora:2221'
-  );
-  $header = array(('Active'), t('Object Title'), t((Identifier'));
-  $rows = array(
-    array(
-	  $form['active'], $form['title'], $form['identifier']
-	),
-	array(
-	  $form['active2'], $form['title2'], $form['identifier2']
-	)
+
+  foreach($orphans as $orphan)
+  {
+    $checkboxes[$orphan['oid']] = ''; 
+    $form[$orphan['oid']]['title'] = array 
+    (
+      '#value' => $orphan['title'],
+    );
+    $form[$user['oid']]['identifier'] = array 
+    (
+      '#value' => $orphan['identifier'],
+    );
+  } 
 	
-  $output = theme_table($header, $rows);
+  $form['active'] = array(
+    '#type' => 'checkboxes'
+	'#options' => $checkboxes
+  );
   
   // Button to save changes, currently not implemented
   $output['save'] = array(
@@ -75,5 +65,50 @@ function orphan_object_formpage($form_state) {
     '#value' => 'Save Settings',
   );
   
-  return $output;
+  $form['#theme'] = 'orphan_object_theme'; 
+  
+  return $form;
+}
+
+function orphan_object_theme(){
+  return array
+  (
+    'orphan_object_theme' => array
+	(
+	  'arguments' => array('form' => NULL)
+	),
+  );
+}
+  
+function theme_orphan_object_theme($form){
+  $rows = array();
+
+  foreach(element_children($form['active']) as $oid) 
+  {
+    $row = array(); 
+    $row[] = drupal_render($form['active'][$oid]); 
+    $row[] = drupal_render($form[$oid]['title']); 
+    $row[] = drupal_render($form[$oid]['identifier']); 
+    $rows[] = $row;
+  }
+  
+  if(count($rows))
+  {
+    $header = array(theme('table_select_header_cell') , t('Active'), t('Object Title'), t('Identifier')); 
+  }
+  else
+  {
+    $header = array(t('Active'), t('Object Title'), t('Identifier')); 
+    $row = array();
+    $row[] = array
+    (
+      'data' => t('No Orphans were found'),
+      'colspan' => 2,
+      'style' => 'text-align:center',
+    );
+    $rows[] = $row;
+  }
+  
+  $output = theme('table', $header, $rows);
+  return $output . drupal_render($form); 
 }
