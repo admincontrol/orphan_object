@@ -55,8 +55,8 @@ function orphan_object_formpage($form_state) {
   } 
 	
   $form['active'] = array(
-    '#type' => 'checkboxes'
-	'#options' => $checkboxes
+    '#type' => 'checkboxes',
+	'#options' => $checkboxes,
   );
   
   // Button to save changes, currently not implemented
