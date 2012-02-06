@@ -62,10 +62,10 @@ function orphan_object_formpage($form_state) {
   $rows = array(
     array(
 	  $form['active'], $form['title'], $form['identifier']
-	);
+	),
 	array(
 	  $form['active2'], $form['title2'], $form['identifier2']
-	);
+	)
 	
   $output = theme_table(array(t('Active'), t('Object Title'), t((Identifier'));
   
