@@ -58,7 +58,7 @@ function orphan_object_formpage($form_state) {
   $form['identifier2'] = array(
     '#value' => 'islandora:2221'
   );
-  
+  $header = array((('Active'), t('Object Title'), t((Identifier'));
   $rows = array(
     array(
 	  $form['active'], $form['title'], $form['identifier']
@@ -67,7 +67,7 @@ function orphan_object_formpage($form_state) {
 	  $form['active2'], $form['title2'], $form['identifier2']
 	)
 	
-  $output = theme_table(array(t('Active'), t('Object Title'), t((Identifier'));
+  $output = theme_table($header, $rows);
   
   // Button to save changes, currently not implemented
   $output['save'] = array(
