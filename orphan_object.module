@@ -35,16 +35,45 @@ function orphan_object_form() {
 function orphan_object_formpage($form_state) {
    
     // Fieldset to hold form contents
-  $form['orphans'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Orphan Objects'),
+  $form['active'] = array(
+    '#type' => 'checkbox'
   );
   
+  $form['title'] = array(
+    '#value' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>'
+  );	
+  
+  $form['identifier'] = array(
+    '#value' => 'islandora:2216'
+  );
+  
+  $form['active2'] = array(
+    '#type' => 'checkbox'
+  );
+  
+  $form['title2'] = array(
+    '#value' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>'
+  );	
+  
+  $form['identifier2'] = array(
+    '#value' => 'islandora:2221'
+  );
+  
+  $rows = array(
+    array(
+	  $form['active'], $form['title'], $form['identifier']
+	);
+	array(
+	  $form['active2'], $form['title2'], $form['identifier2']
+	);
+	
+  $output = theme_table(array(t('Active'), t('Object Title'), t((Identifier'));
+  
   // Button to save changes, currently not implemented
-  $form['save'] = array(
+  $output['save'] = array(
     '#type' => 'submit',
     '#value' => 'Save Settings',
   );
   
-  return $form;
+  return $output;
 }
