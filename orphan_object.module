@@ -40,7 +40,9 @@ function orphan_object_formpage($form_state) {
     array('oid' => 0, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>', 'identifier' => 'islandora:2216'),
     array('oid' => 1, 'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>', 'identifier' => 'islandora:2221'),
   );
-
+  
+  $selected = array(0,1);
+  
   foreach($orphans as $orphan)
   {
     $active[$orphan['oid']] = ''; 
@@ -57,7 +59,7 @@ function orphan_object_formpage($form_state) {
   $form['active'] = array(
     '#type' => 'checkboxes',
 	'#options' => $active,
-	'#default_value' => array(0,1),
+	'#default_value' => $selected,
   );
   
   $form['submit'] = array(
@@ -68,6 +70,10 @@ function orphan_object_formpage($form_state) {
   $form['#theme'] = 'orphan_object_theme'; 
   
   return $form;
+}
+
+function orphan_object_submit($form, &$form_state) {
+  drupal_set_message(t('The update has been performed.'));
 }
 
 function orphan_object_theme(){
