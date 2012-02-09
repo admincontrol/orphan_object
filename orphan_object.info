@@ -1,0 +1,4 @@
+name = Orphan Object
+description = Provides administrative access to manage orphan fedora objects.
+core = 6.x
+version = 6.22
