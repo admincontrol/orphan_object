@@ -158,7 +158,7 @@ function theme_orphan_object_theme($form) {
 }
 
 /**
- * Method used to delete orphan fedora objects
+ * Method used to set objects' datastreams to deleted.
  *
  * @param $objects
  *   An array of object PIDs selected by the user to be deleted.
@@ -169,7 +169,7 @@ function theme_orphan_object_theme($form) {
  *  an array of failure objects.
  */
 
-function orphan_object_delete_fedora_objects($objects, $uid) {
+function orphan_object_delete_fedora_object_datastreams($objects, $uid) {
   $results = array();
 
   //incase only one element is passed in
@@ -181,11 +181,13 @@ function orphan_object_delete_fedora_objects($objects, $uid) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $state = 'D'; //Set the object to deleted
-      $dsid = $PID; //I think this is distinct identifier
-      $log_message = "Object " . $value . "} is being set to deleted by user: {" . $uid . "}.";
-      $fedora_item->set_datastream_state($dsid, $state, $log_message);
-      $results["success"][] = $value;
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'D'; //Set the object to deleted
+        $log_message = "Object " . $value . "} is being set to deleted by user: {" . $uid . "}.";
+        $fedora_item->set_datastream_state($dsid, $state, $log_message);
+        $results["success"][] = $value;
+      }
     }
     else {
       $results["failure"][] = $value;
@@ -196,7 +198,7 @@ function orphan_object_delete_fedora_objects($objects, $uid) {
 }
 
 /**
- * Method used to purge orphan fedora objects
+ * Method used to purge orphan fedora objects.
  *
  * @param $objects
  *   An array of object PIDs selected by the user to be purged.
@@ -231,7 +233,7 @@ function orphan_object_purge_fedora_objects($objects, $uid) {
 }
 
 /**
- * Method used to inactivate orphan fedora objects
+ *  Method used to set objects' datastreams to inactive.
  *
  * @param $objects
  *   An array of object PIDs selected by the user to be purged.
@@ -241,7 +243,7 @@ function orphan_object_purge_fedora_objects($objects, $uid) {
  *   Multi-Dimensal Array containing and array of successful objects and
  *  an array of failure objects.
  */
-function orphan_object_inactivate_fedora_objects($objects, $uid) {
+function orphan_object_inactivate_fedora_object_datastreams($objects, $uid) {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -252,11 +254,13 @@ function orphan_object_inactivate_fedora_objects($objects, $uid) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $state = 'I'; //Set the object to deleted
-      $dsid = $PID; //I think this is distinct identifier
-      $log_message = "Object " . $value . "} is being set to inactivated by user: {" . $uid . "}.";
-      $fedora_item->set_datastream_state($dsid, $state, $log_message);
-      $results["success"][] = $value;
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'I'; //Set the object to inactive
+        $log_message = "Object " . $value . "} is being set to inactivated by user: {" . $uid . "}.";
+        $fedora_item->set_datastream_state($dsid, $state, $log_message);
+        $results["success"][] = $value;
+      }
     }
     else {
       $results["failure"][] = $value;
@@ -267,7 +271,7 @@ function orphan_object_inactivate_fedora_objects($objects, $uid) {
 }
 
 /**
- * Method used to activate orphan fedora objects
+ * Method used to set objects' datastreams to active.
  *
  * @param $objects
  *   An array of object PIDs selected by the user to be purged.
@@ -277,7 +281,7 @@ function orphan_object_inactivate_fedora_objects($objects, $uid) {
  *   Multi-Dimensal Array containing and array of successful objects and
  *  an array of failure objects.
  */
-function orphan_object_activate_fedora_objects($objects, $uid) {
+function orphan_object_activate_fedora_object_datastreams($objects, $uid) {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -288,11 +292,139 @@ function orphan_object_activate_fedora_objects($objects, $uid) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $state = 'A'; //Set the object to deleted
-      $dsid = $PID; //I think this is distinct identifier
-      $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
-      $fedora_item->set_datastream_state($dsid, $state, $log_message);
-      $results["success"][] = $value;
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'A'; //Set the object to activated
+        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $fedora_item->set_datastream_state($dsid, $state, $log_message);
+        $results["success"][] = $value;
+      }
+    }
+    else {
+      $results["failure"][] = $value;
+    }
+  }
+
+  return $results;
+}
+
+/**
+ * Method used to set objects' state to active.
+ *
+ * @param $objects
+ *   An array of object PIDs selected by the user to be purged.
+ *   Array Format $object[label] = PID, example $object["Test"] = islandora:13424.
+ * @param $uid
+ *   The current User ID. (This is the user activate the objects)
+ * @return $results
+ *   Multi-Dimensal Array containing and array of successful objects and
+ *  an array of failure objects.
+ */
+
+function orphan_object_activate_fedora_objects($objects, $uid) {
+  $results = array();
+  //incase only one element is passed in
+  if (!is_array($objects)) {
+    $objects = array($objects);
+  }
+
+  foreach ($objects as $key => $value) {
+    $fedora_item = new Fedora_Item($value);
+    //check to see if the fedora object exists, if exists 1 is returned.
+    if  ($fedora_item->exists())  {
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'A'; //Set the object to active
+        $label = $key; // needs to be filled in with objects label.
+        $ownerId = $node->uid; //The object owner is the node owner.
+        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
+        $results["success"][] = $value;
+      }
+    }
+    else {
+      $results["failure"][] = $value;
+    }
+  }
+
+  return $results;
+}
+
+/**
+ * Method used to set objects' state to inactive.
+ *
+ * @param $objects
+ *   An array of object PIDs selected by the user to be purged.
+ *   Array Format $object[label] = PID, example $object["Test"] = islandora:13424.
+ * @param $uid
+ *   The current User ID. (This is the user activate the objects)
+ * @return $results
+ *   Multi-Dimensal Array containing and array of successful objects and
+ *  an array of failure objects.
+ */
+
+function orphan_object_inactivate_fedora_objects($objects, $uid) {
+  $results = array();
+  //incase only one element is passed in
+  if (!is_array($objects)) {
+    $objects = array($objects);
+  }
+
+  foreach ($objects as $key => $value) {
+    $fedora_item = new Fedora_Item($value);
+    //check to see if the fedora object exists, if exists 1 is returned.
+    if  ($fedora_item->exists())  {
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'I'; //Set the object to inactivated
+        $label = $key; // Object Label
+        $ownerId = $node->uid; //The object owner is the node owner.
+        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $fedora_item->modify_object($label, $state, $ownerId , $logMessage, TRUE);
+        $results["success"][] = $value;
+      }
+    }
+    else {
+      $results["failure"][] = $value;
+    }
+  }
+
+  return $results;
+}
+
+/**
+ * Method used to set objects' state to deleted.
+ *
+ * @param $objects
+ *   An array of object PIDs selected by the user to be purged.
+ *   Array Format $object[label] = PID, example $object["Test"] = islandora:13424.
+ * @param $uid
+ *   The current User ID. (This is the user activate the objects)
+ * @return $results
+ *   Multi-Dimensal Array containing and array of successful objects and
+ *  an array of failure objects.
+ */
+
+function orphan_object_delete_fedora_objects($objects, $uid) {
+  $results = array();
+  //incase only one element is passed in
+  if (!is_array($objects)) {
+    $objects = array($objects);
+  }
+
+  foreach ($objects as $key => $value) {
+    $fedora_item = new Fedora_Item($value);
+    //check to see if the fedora object exists, if exists 1 is returned.
+    if  ($fedora_item->exists())  {
+      $dsid_array = $fedora_item->get_datastreams_list_as_array();
+      foreach ($dsid_array as $dsid) {
+        $state = 'D'; //Set the object to deleted
+        $label = $key; // Object Label
+        $ownerId = $node->uid; //The object owner is the node owner.
+        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
+        $results["success"][] = $value;
+      }
     }
     else {
       $results["failure"][] = $value;
