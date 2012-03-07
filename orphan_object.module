@@ -35,6 +35,13 @@ function orphan_object_menu() {
     'access arguments' => array('administer Orphan Object Adminstration'),
     'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
   );
+  $items['admin/content/orphan-object/manage'] = array(
+    'title' => t('Update Orphan Objects'),
+    'page callback' => 'orphan_object_manage_form',
+    'description' => t('Update Orphan Objects'),
+    'access arguments' => array('administer Orphan Object Adminstration'),
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -169,7 +176,7 @@ function theme_orphan_object_theme($form) {
  *  an array of failure objects.
  */
 
-function orphan_object_delete_fedora_object_datastreams($objects, $uid) {
+function orphan_object_delete_fedora_object_datastreams($objects, $uid, $user_set_log = "") {
   $results = array();
 
   //incase only one element is passed in
@@ -184,7 +191,7 @@ function orphan_object_delete_fedora_object_datastreams($objects, $uid) {
       $dsid_array = $fedora_item->get_datastreams_list_as_array();
       foreach ($dsid_array as $dsid) {
         $state = 'D'; //Set the object to deleted
-        $log_message = "Object " . $value . "} is being set to deleted by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . "} is being set to deleted by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->set_datastream_state($dsid, $state, $log_message);
         $results["success"][] = $value;
       }
@@ -209,7 +216,7 @@ function orphan_object_delete_fedora_object_datastreams($objects, $uid) {
  *  an array of failure objects.
  */
 
-function orphan_object_purge_fedora_objects($objects, $uid) {
+function orphan_object_purge_fedora_objects($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -220,7 +227,7 @@ function orphan_object_purge_fedora_objects($objects, $uid) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $log_message = "Object " . $value . "} is being set to purged by user: {" . $uid . "}.";
+      $log_message = "PID " . $value . " is being set to purged by user: {" . $uid . "}. " . $user_set_log;
       $fedora_item->purge($log_message, TRUE); //remove the fedora object
       $results["success"][] = $value;
     }
@@ -243,7 +250,7 @@ function orphan_object_purge_fedora_objects($objects, $uid) {
  *   Multi-Dimensal Array containing and array of successful objects and
  *  an array of failure objects.
  */
-function orphan_object_inactivate_fedora_object_datastreams($objects, $uid) {
+function orphan_object_inactivate_fedora_object_datastreams($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -257,7 +264,7 @@ function orphan_object_inactivate_fedora_object_datastreams($objects, $uid) {
       $dsid_array = $fedora_item->get_datastreams_list_as_array();
       foreach ($dsid_array as $dsid) {
         $state = 'I'; //Set the object to inactive
-        $log_message = "Object " . $value . "} is being set to inactivated by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . " is being set to inactivated by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->set_datastream_state($dsid, $state, $log_message);
         $results["success"][] = $value;
       }
@@ -281,7 +288,7 @@ function orphan_object_inactivate_fedora_object_datastreams($objects, $uid) {
  *   Multi-Dimensal Array containing and array of successful objects and
  *  an array of failure objects.
  */
-function orphan_object_activate_fedora_object_datastreams($objects, $uid) {
+function orphan_object_activate_fedora_object_datastreams($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -295,7 +302,7 @@ function orphan_object_activate_fedora_object_datastreams($objects, $uid) {
       $dsid_array = $fedora_item->get_datastreams_list_as_array();
       foreach ($dsid_array as $dsid) {
         $state = 'A'; //Set the object to activated
-        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->set_datastream_state($dsid, $state, $log_message);
         $results["success"][] = $value;
       }
@@ -321,7 +328,7 @@ function orphan_object_activate_fedora_object_datastreams($objects, $uid) {
  *  an array of failure objects.
  */
 
-function orphan_object_activate_fedora_objects($objects, $uid) {
+function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -337,7 +344,7 @@ function orphan_object_activate_fedora_objects($objects, $uid) {
         $state = 'A'; //Set the object to active
         $label = $key; // needs to be filled in with objects label.
         $ownerId = $node->uid; //The object owner is the node owner.
-        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
         $results["success"][] = $value;
       }
@@ -363,7 +370,7 @@ function orphan_object_activate_fedora_objects($objects, $uid) {
  *  an array of failure objects.
  */
 
-function orphan_object_inactivate_fedora_objects($objects, $uid) {
+function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -379,7 +386,7 @@ function orphan_object_inactivate_fedora_objects($objects, $uid) {
         $state = 'I'; //Set the object to inactivated
         $label = $key; // Object Label
         $ownerId = $node->uid; //The object owner is the node owner.
-        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId , $logMessage, TRUE);
         $results["success"][] = $value;
       }
@@ -405,7 +412,7 @@ function orphan_object_inactivate_fedora_objects($objects, $uid) {
  *  an array of failure objects.
  */
 
-function orphan_object_delete_fedora_objects($objects, $uid) {
+function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "") {
   $results = array();
   //incase only one element is passed in
   if (!is_array($objects)) {
@@ -421,7 +428,7 @@ function orphan_object_delete_fedora_objects($objects, $uid) {
         $state = 'D'; //Set the object to deleted
         $label = $key; // Object Label
         $ownerId = $node->uid; //The object owner is the node owner.
-        $log_message = "Object " . $value . "} is being set to active by user: {" . $uid . "}.";
+        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
         $results["success"][] = $value;
       }
