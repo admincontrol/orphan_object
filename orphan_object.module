@@ -339,15 +339,12 @@ function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $dsid_array = $fedora_item->get_datastreams_list_as_array();
-      foreach ($dsid_array as $dsid) {
         $state = 'A'; //Set the object to active
-        $label = $key; // needs to be filled in with objects label.
+        $label = $fedora_item->objectProfile->objLabel; // needs to be filled in with objects label.
         $ownerId = $node->uid; //The object owner is the node owner.
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
         $results["success"][] = $value;
-      }
     }
     else {
       $results["failure"][] = $value;
@@ -381,15 +378,12 @@ function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log =
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $dsid_array = $fedora_item->get_datastreams_list_as_array();
-      foreach ($dsid_array as $dsid) {
         $state = 'I'; //Set the object to inactivated
-        $label = $key; // Object Label
+        $label = $fedora_item->objectProfile->objLabel; // Object Label
         $ownerId = $node->uid; //The object owner is the node owner.
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId , $logMessage, TRUE);
         $results["success"][] = $value;
-      }
     }
     else {
       $results["failure"][] = $value;
@@ -423,15 +417,12 @@ function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "")
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
     if  ($fedora_item->exists())  {
-      $dsid_array = $fedora_item->get_datastreams_list_as_array();
-      foreach ($dsid_array as $dsid) {
         $state = 'D'; //Set the object to deleted
-        $label = $key; // Object Label
+        $label = $fedora_item->objectProfile->objLabel; // Object Label
         $ownerId = $node->uid; //The object owner is the node owner.
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
         $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
         $results["success"][] = $value;
-      }
     }
     else {
       $results["failure"][] = $value;
