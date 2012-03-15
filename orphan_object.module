@@ -1,31 +1,29 @@
 <?php
 /**
-* @file
-*
-*
-*
-*
-*/
+ * @file
+ *
+ *
+ */
 
 /**
-*
-* Load fedora_item.inc from the fedora_repository module in the api folder.
-* This is used to update, delete fedora objects
-*
-*/
+ *
+ * Load fedora_item.inc from the fedora_repository module in the api folder.
+ * This is used to update, delete fedora objects
+ *
+ */
 module_load_include('inc', 'fedora_repository', 'api/fedora_item');
 
 /**
-* Implementation of hook_perm().
-*/
+ * Implementation of hook_perm().
+ */
 
 function orphan_object_perm() {
   return array('administer Orphan Object Adminstration');
 }
 
 /**
-* Implementation of hook_menu().
-*/
+ * Implementation of hook_menu().
+ */
 function orphan_object_menu() {
   $items = array();
   $items['admin/content/orphan-object'] = array(
@@ -35,85 +33,76 @@ function orphan_object_menu() {
     'access arguments' => array('administer Orphan Object Adminstration'),
     'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
   );
-
-
-	$items ['admin/content/orphan-object/Update'] = array(
-		'title' => t('Update Orphan Objects'),
-		'page callback' => 'orphan_object_form_update',
-		'access callback' => 'user_access',
-		'access arguments' => array('administer Orphan Object Administration'),
-		'description' => t('Change orphan status')
+  $items ['admin/content/orphan-object/Update'] = array(
+    'title' => t('Update Orphan Objects'),
+    'page callback' => 'orphan_object_form_update',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer Orphan Object Administration'),
+    'description' => t('Change orphan status'),
 );
 
   return $items;
 }
 
 /**
-* Generates a page for the form.
-*/
+ * Generates a page for the form.
+ */
 function orphan_object_form() {
   // Form builder call to build the form
   return drupal_get_form('orphan_object_formpage');
-
 }
 
 /**
-* Generates a page for the form for update page.
-*/
+ * Generates a page for the form for update page.
+ */
 function orphan_object_form_update() {
   // Form builder call to build the form
   return drupal_get_form('orphan_object_formpage_update');
-
 }
+
 /**
-* Builds the update orphan object form page
-*/
+ * Builds the update orphan object form page
+ */
 function orphan_object_formpage_update($form_state) {
-
-	global $orphans;
-
-	// Creates an array to hold the values to be used to create the form elements
-	$orphans = array
-	(
-		array(
-			'oid' => 0,
-			'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>',
-			'identifier' => 'islandora:2216',
-			'status' => 'A',
-		),
-		array(
-			'oid' => 1,
-			'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>',
-			'identifier' => 'islandora:2221',
-			'status' => 'I',
-		)
-	);
+  // Creates an array to hold the values to be used to create the form elements
+  $orphans = array(
+    array(
+    'oid' => 0,
+    'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>',
+    'identifier' => 'islandora:2216',
+    'status' => 'A',
+    ),
+    array(
+    'oid' => 1,
+    'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>',
+    'identifier' => 'islandora:2221',
+    'status' => 'I',
+    )
+    );
 
   module_load_include('inc', 'fedora_repository', 'api/fedora_collection');
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
-
-	$radioOptions = array(
-		'#type' => 'radios',
-		'#options' => array('A' => 'Activate', 'I' => 'Inactivate', 'D' => 'Delete', 'P' => 'Purge',),
-		'#prefix' => '<div  class="container-inline">',
-		'#sufix' => '</div>'
-	);
+  $radioOptions = array(
+    '#type' => 'radios',
+    '#options' => array('A' => 'Activate', 'I' => 'Inactivate', 'D' => 'Delete', 'P' => 'Purge', ),
+    '#prefix' => '<div  class="container-inline">',
+    '#sufix' => '</div>'
+  );
 
 
 
   // Creates elements from the above values and sets up an array for the checkboxes
   foreach ($orphans as $orphan) {
-		// Object Cell
-		$form['orphans'][$orphan['oid']]['identifier'] = array( '#value' => $orphan['identifier']);
+    // Object Cell
+    $form['orphans'][$orphan['oid']]['identifier'] = array( '#value' => $orphan['identifier']);
     $form['orphans'][$orphan['oid']]['pid'] = array('#type' => 'hidden', '#value' => $orphan['identifier']);
     $form['orphans'][$orphan['oid']]['orgStatus'] = array('#type' => 'hidden', '#value' => $orphan['status']);
-		// Radios Cell
-		$form['orphans'][$orphan['oid']]['#tree'] = TRUE;
-		$form['orphans'][$orphan['oid']]['status'] = $radioOptions;
-		$form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['status'];
-
-		// Log Message
-		$form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield');
+    // Radios Cell
+    $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
+    $form['orphans'][$orphan['oid']]['status'] = $radioOptions;
+    $form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['status'];
+    // Log Message
+    $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield');
   }
 
   // Creates the Save Configuration button
@@ -128,20 +117,21 @@ function orphan_object_formpage_update($form_state) {
 
   return $form;
 }
+
 /**
-* Sets what occurs when the Save Configuration is clicked for the update form
-*/
+ * Sets what occurs when the Save Configuration is clicked for the update form
+ */
 function orphan_object_formpage_update_submit($form, &$form_state) {
   // Load fedora_item.inc from the fedora_repository module in the api folder.
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-	global $user;
-  foreach($_POST as $key) {
+  global $user;
+  foreach ($_POST as $key) {
     //exit the foreach once all the files have been processed.
     // [op] = "Save Configuration" is the first element after all the objects
     if ($key == "Save Configuration") {
       break;
     }
-		$logmsg = $key['log'];
+    $logmsg = $key['log'];
     if ($key['status'] != $key['orgStatus']) {
       $switch = $key['status'];
     }
@@ -149,66 +139,65 @@ function orphan_object_formpage_update_submit($form, &$form_state) {
       $switch = "";
     }
 
-		switch($switch) {
-			case 'A':
+    switch ($switch) {
+      case 'A':
         $fedora_item = new Fedora_Item($key['pid']);
         if ($fedora_item->exists()) {
-				  orphan_object_activate_fedora_objects($key['pid'], $user->uid, $logmsg );
-  	      drupal_set_message(t(check_plain($key['pid']).' has been success activated.'));
+          orphan_object_activate_fedora_objects($key['pid'], $user->uid, $logmsg );
+          drupal_set_message(check_plain($key['pid']) . ' has been success activated.');
         }
         else {
-          drupal_set_message(t(check_plain($key['pid']).' is a nonexistent PID.'));
+          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
         }
-				break;
-			case 'I':
+        break;
+      case 'I':
         $fedora_item = new Fedora_Item($key['pid']);
         if ($fedora_item->exists()) {
-				  orphan_object_inactivate_fedora_objects($key['pid'], $user->uid, $logmsg);
-  	      drupal_set_message(t(check_plain($key['pid']).' has been success inactivated.'));
+          orphan_object_inactivate_fedora_objects($key['pid'], $user->uid, $logmsg);
+          drupal_set_message(check_plain($key['pid']) . ' has been success inactivated.');
         }
         else {
-          drupal_set_message(t(check_plain($key['pid']).' is a nonexistent PID.'));
+          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
         }
-				break;
-			case 'P':
+        break;
+      case 'P':
         $fedora_item = new Fedora_Item($key['pid']);
         if ($fedora_item->exists()) {
-				  orphan_object_purge_fedora_objects($key['pid'], $user->uid, $logmsg);
-  	      drupal_set_message(t(check_plain($key['pid']).' has been success deleted.'));
+          orphan_object_purge_fedora_objects($key['pid'], $user->uid, $logmsg);
+          drupal_set_message(check_plain($key['pid']) . ' has been success deleted.');
         }
         else {
-          drupal_set_message(t(check_plain($key['pid']).' is a nonexistent PID.'));
+          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
         }
-				break;
-			case 'D':
+        break;
+      case 'D':
         $fedora_item = new Fedora_Item($key['pid']);
         if ($fedora_item->exists()) {
-				  orphan_object_delete_fedora_objects($key['pid'], $user->uid, $logmsg);
-  	      drupal_set_message(t(check_plain($key['pid']).' has been success purged.'));
+          orphan_object_delete_fedora_objects($key['pid'], $user->uid, $logmsg);
+          drupal_set_message(check_plain($key['pid']) . ' has been success purged.');
         }
         else {
-          drupal_set_message(t(check_plain($key['pid']).' is a nonexistent PID.'));
+          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
         }
-				break;
+        break;
       default:
-        drupal_set_message(t(check_plain($key['pid']).' has not been issued a new state.'));
-				break;
-		}
-	}
+        drupal_set_message(check_plain($key['pid']) . ' has not been issued a new state.');
+      break;
+    }
+  }
   //replace with drupal_go_to
 }
-//***********************************************************
 
 /**
-* Builds the orphan_object form.
-*/
+ * Builds the orphan_object form.
+ */
 function orphan_object_formpage($form_state) {
 
 }
 
 /**
-* Sets what occurs when the Save Configuration is clicked.
-*/
+ * Sets what occurs when the Save Configuration is clicked.
+ */
 function orphan_object_formpage_submit($form, &$form_state) {
   // Load fedora_item.inc from the fedora_repository module in the api folder.
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
@@ -216,9 +205,8 @@ function orphan_object_formpage_submit($form, &$form_state) {
 
 
 /**
-* Sets up for the theme.
-*/
-
+ * Sets up for the theme.
+ */
 function orphan_object_theme() {
   return array(
     'orphan_object_form' => array(
@@ -231,8 +219,8 @@ function orphan_object_theme() {
 }
 
 /**
-* Sets the theme.
-*/
+ * Sets the theme.
+ */
 
 function theme_orphan_object_form_update($form) {
   $rows = array();
@@ -243,18 +231,18 @@ function theme_orphan_object_form_update($form) {
     //$row[] = drupal_render($form['active'][$oid]);
     //$row[] = drupal_render($form[$oid]['title']);
     $row[] = drupal_render($form['orphans'][$oid]['identifier']);
-		$row[] = drupal_render($form['orphans'][$oid]['status']);
-		$row[] = drupal_render($form['orphans'][$oid]['log']);
-		$rows[] = $row;
+    $row[] = drupal_render($form['orphans'][$oid]['status']);
+    $row[] = drupal_render($form['orphans'][$oid]['log']);
+    $rows[] = $row;
   }
 
   //if there are rows add these headers
   if (count($rows)) {
-    $header = array(/*t('Active'), t('Object Title'),*/ t('Identifiers'), t('Status'), t('Log Message'));
+    $header = array(t('Identifiers'), t('Status'), t('Log Message'));
   }
   //otherwise add these headers and give this message
   else {
-    $header = array(/*t('Active'), t('Object Title'),*/ t('Identifier'), t('Status'), t('Log Message'));
+    $header = array(t('Identifier'), t('Status'), t('Log Message'));
     $row = array();
     $row[] = array
     (
@@ -272,17 +260,16 @@ function theme_orphan_object_form_update($form) {
 }
 
 /**
-* Method used to delete orphan fedora objects
-*
-* @param $objects
-* An array of object PIDs selected by the user to be deleted.
-* @param $uid
-* The current User ID. (This is the user deleting the objects)
-* @return $results
-* Multi-Dimensal Array containing and array of successful objects and
-* an array of failure objects.
-*/
-
+ * Method used to delete orphan fedora objects
+ *
+ * @param $objects
+ * An array of object PIDs selected by the user to be deleted.
+ * @param $uid
+ * The current User ID. (This is the user deleting the objects)
+ * @return $results
+ * Multi-Dimensal Array containing and array of successful objects and
+ * an array of failure objects.
+ */
 function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "") {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
@@ -304,7 +291,8 @@ function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "")
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
           $ownerId = (string) $resultelements->resultList->objectFields->ownerId;
-        } else {
+        }
+        else {
           $ownerId = NULL;
         }
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
@@ -320,17 +308,16 @@ function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "")
 }
 
 /**
-* Method used to purge orphan fedora objects
-*
-* @param $objects
-* An array of object PIDs selected by the user to be purged.
-* @param $uid
-* The current User ID. (This is the user pruging the objects)
-* @return $results
-* Multi-Dimensal Array containing and array of successful objects and
-* an array of failure objects.
-*/
-
+ * Method used to purge orphan fedora objects
+ *
+ * @param $objects
+ * An array of object PIDs selected by the user to be purged.
+ * @param $uid
+ * The current User ID. (This is the user pruging the objects)
+ * @return $results
+ * Multi-Dimensal Array containing and array of successful objects and
+ * an array of failure objects.
+ */
 function orphan_object_purge_fedora_objects($objects, $uid, $user_set_log = "") {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   $results = array();
@@ -338,7 +325,6 @@ function orphan_object_purge_fedora_objects($objects, $uid, $user_set_log = "") 
   if (!is_array($objects)) {
     $objects = array($objects);
   }
-
   foreach ($objects as $value) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
@@ -351,23 +337,21 @@ function orphan_object_purge_fedora_objects($objects, $uid, $user_set_log = "") 
       $results["failure"][] = $value;
     }
   }
-
   return $results;
 }
 
 /**
-* Method used to set objects' state to inactive.
-*
-* @param $objects
-* An array of object PIDs selected by the user to be purged.
-* Array Format $object[label] = PID, example $object["Test"] = islandora:13424.
-* @param $uid
-* The current User ID. (This is the user activate the objects)
-* @return $results
-* Multi-Dimensal Array containing and array of successful objects and
-* an array of failure objects.
-*/
-
+ * Method used to set objects' state to inactive.
+ *
+ * @param $objects
+ * An array of object PIDs selected by the user to be purged.
+ * Array Format $object[label] = PID, example $object["Test"] = islandora:13424.
+ * @param $uid
+ * The current User ID. (This is the user activate the objects)
+ * @return $results
+ * Multi-Dimensal Array containing and array of successful objects and
+ * an array of failure objects.
+ */
 function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log = "") {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
@@ -376,7 +360,6 @@ function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log =
   if (!is_array($objects)) {
     $objects = array($objects);
   }
-
   foreach ($objects as $key => $value) {
     $fedora_item = new Fedora_Item($value);
     //check to see if the fedora object exists, if exists 1 is returned.
@@ -389,7 +372,8 @@ function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log =
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
           $ownerId = (string) $resultelements->resultList->objectFields->ownerId;
-        } else {
+        }
+        else {
           $ownerId = NULL;
         }
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
@@ -400,21 +384,20 @@ function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log =
       $results["failure"][] = $value;
     }
   }
-
   return $results;
 }
 
 /**
-* Method used to activate orphan fedora objects
-*
-* @param $objects
-* An array of object PIDs selected by the user to be purged.
-* @param $uid
-* The current User ID. (This is the user activate the objects)
-* @return $results
-* Multi-Dimensal Array containing and array of successful objects and
-* an array of failure objects.
-*/
+ * Method used to activate orphan fedora objects
+ *
+ * @param $objects
+ * An array of object PIDs selected by the user to be purged.
+ * @param $uid
+ * The current User ID. (This is the user activate the objects)
+ * @return $results
+ * Multi-Dimensal Array containing and array of successful objects and
+ * an array of failure objects.
+ */
 function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "") {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
@@ -436,7 +419,8 @@ function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
           $ownerId = (string) $resultelements->resultList->objectFields->ownerId;
-        } else {
+        }
+        else {
           $ownerId = NULL;
         }
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
@@ -458,7 +442,6 @@ function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "
  *
  * @return array
  */
-
 function orphan_object_getlist() {
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
   module_load_include('inc', 'fedora_repository', 'ObjectHelper');
@@ -481,7 +464,7 @@ function orphan_object_getlist() {
   foreach ($everythinglist as $everythingitem) {   //removes  blanks
     if ($everythingitem) {
       $everythingparts = explode(',', $everythingitem);
-	  array_push($everything, $everythingparts[0]);  //place only the pid in the array
+      array_push($everything, $everythingparts[0]);  //place only the pid in the array
     }
   }
 
@@ -528,7 +511,7 @@ function orphan_object_getlist() {
     }
 
   //merge all the results into one array
-  $collectionsarray = array_merge ($collectionsarray, $cpidarray);
+  $collectionsarray = array_merge($collectionsarray, $cpidarray);
 
   }
 
@@ -540,8 +523,7 @@ function orphan_object_getlist() {
 
   //used to grab all the objects that are members of the objects held within $queryarray and any
   //objects that members of those objects, and so on
-  while ($done > 0)
-  {
+  while ($done > 0) {
     //set $done to 0 so that if nothing is done the loop ends
     $done = 0;
     foreach ($queryarray as $opid) {
@@ -564,14 +546,14 @@ function orphan_object_getlist() {
       }
 
       //if the $opidarray is not empty merge the results into $objectsarray and $nextarray, and increase done
-	  if (!empty($opidarray)){
-        $objectsarray = array_merge ($objectsarray, $opidarray);
-	    $nextarray = array_merge ($nextarray, $opidarray);
-		$done++;
-	  }
+      if (!empty($opidarray)) {
+        $objectsarray = array_merge($objectsarray, $opidarray);
+        $nextarray = array_merge($nextarray, $opidarray);
+        $done++;
+      }
     }
     //make $queryarray equal to $nextarray
-	$queryarray = $nextarray;
+    $queryarray = $nextarray;
   }
 
   //query to grab all the content models
