@@ -2,7 +2,6 @@
 /**
  * @file
  *
- *
  */
 
 /**
@@ -33,14 +32,6 @@ function orphan_object_menu() {
     'access arguments' => array('administer Orphan Object Adminstration'),
     'description' => t('Administrative Interface for management of Orphaned Fedora Objects'),
   );
-  $items ['admin/content/orphan-object/Update'] = array(
-    'title' => t('Update Orphan Objects'),
-    'page callback' => 'orphan_object_form_update',
-    'access callback' => 'user_access',
-    'access arguments' => array('administer Orphan Object Administration'),
-    'description' => t('Change orphan status'),
-);
-
   return $items;
 }
 
@@ -52,168 +43,229 @@ function orphan_object_form() {
   return drupal_get_form('orphan_object_formpage');
 }
 
-/**
- * Generates a page for the form for update page.
- */
-function orphan_object_form_update() {
-  // Form builder call to build the form
-  return drupal_get_form('orphan_object_formpage_update');
-}
-
-/**
- * Builds the update orphan object form page
- */
-function orphan_object_formpage_update($form_state) {
-  // Creates an array to hold the values to be used to create the form elements
-  $orphans = array(
-    array(
-    'oid' => 0,
-    'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2216/-/Heart%20Beat">Heart Beat</a>',
-    'identifier' => 'islandora:2216',
-    'status' => 'A',
-    ),
-    array(
-    'oid' => 1,
-    'title' => '<a href = "http://192.168.56.195/fedora/repository/islandora:2221/-/Elmsdale">Elmsdale</a>',
-    'identifier' => 'islandora:2221',
-    'status' => 'I',
-    )
-    );
-
-  module_load_include('inc', 'fedora_repository', 'api/fedora_collection');
-  module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
-  $radioOptions = array(
-    '#type' => 'radios',
-    '#options' => array('A' => 'Activate', 'I' => 'Inactivate', 'D' => 'Delete', 'P' => 'Purge', ),
-    '#prefix' => '<div  class="container-inline">',
-    '#sufix' => '</div>'
-  );
-
-
-
-  // Creates elements from the above values and sets up an array for the checkboxes
-  foreach ($orphans as $orphan) {
-    // Object Cell
-    $form['orphans'][$orphan['oid']]['identifier'] = array( '#value' => $orphan['identifier']);
-    $form['orphans'][$orphan['oid']]['pid'] = array('#type' => 'hidden', '#value' => $orphan['identifier']);
-    $form['orphans'][$orphan['oid']]['orgStatus'] = array('#type' => 'hidden', '#value' => $orphan['status']);
-    // Radios Cell
-    $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
-    $form['orphans'][$orphan['oid']]['status'] = $radioOptions;
-    $form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['status'];
-    // Log Message
-    $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield');
+function orphan_object_getState($incpid) {
+  $pid = $incpid;
+  $urltest = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
+  $urltest .= "/objects?terms=$pid&state=true&resultFormat=xml";
+  $resultxml2 = do_curl($urltest);
+  $resultelements2 = simplexml_load_string($resultxml2);
+  if (!empty($resultelements2)) {
+    $result2 = (string) $resultelements2->resultList->objectFields->state;
   }
-
-  // Creates the Save Configuration button
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => 'Save Configuration',
-  );
-
-  //Set form submit and theme
-  $form['#submit'][] = 'orphan_object_formpage_update_submit';
-  $form['#theme'] = 'orphan_object_form_update';
-
-  return $form;
-}
-
-/**
- * Sets what occurs when the Save Configuration is clicked for the update form
- */
-function orphan_object_formpage_update_submit($form, &$form_state) {
-  // Load fedora_item.inc from the fedora_repository module in the api folder.
-  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  global $user;
-  foreach ($_POST as $key) {
-    //exit the foreach once all the files have been processed.
-    // [op] = "Save Configuration" is the first element after all the objects
-    if ($key == "Save Configuration") {
-      break;
-    }
-    $logmsg = $key['log'];
-    if ($key['status'] != $key['orgStatus']) {
-      $switch = $key['status'];
-    }
-    else {
-      $switch = "";
-    }
-
-    switch ($switch) {
-      case 'A':
-        $fedora_item = new Fedora_Item($key['pid']);
-        if ($fedora_item->exists()) {
-          orphan_object_activate_fedora_objects($key['pid'], $user->uid, $logmsg );
-          drupal_set_message(check_plain($key['pid']) . ' has been success activated.');
-        }
-        else {
-          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
-        }
-        break;
-      case 'I':
-        $fedora_item = new Fedora_Item($key['pid']);
-        if ($fedora_item->exists()) {
-          orphan_object_inactivate_fedora_objects($key['pid'], $user->uid, $logmsg);
-          drupal_set_message(check_plain($key['pid']) . ' has been success inactivated.');
-        }
-        else {
-          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
-        }
-        break;
-      case 'P':
-        $fedora_item = new Fedora_Item($key['pid']);
-        if ($fedora_item->exists()) {
-          orphan_object_purge_fedora_objects($key['pid'], $user->uid, $logmsg);
-          drupal_set_message(check_plain($key['pid']) . ' has been success deleted.');
-        }
-        else {
-          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
-        }
-        break;
-      case 'D':
-        $fedora_item = new Fedora_Item($key['pid']);
-        if ($fedora_item->exists()) {
-          orphan_object_delete_fedora_objects($key['pid'], $user->uid, $logmsg);
-          drupal_set_message(check_plain($key['pid']) . ' has been success purged.');
-        }
-        else {
-          drupal_set_message(check_plain($key['pid']) . ' is a nonexistent PID.');
-        }
-        break;
-      default:
-        drupal_set_message(check_plain($key['pid']) . ' has not been issued a new state.');
-      break;
-    }
-  }
-  //replace with drupal_go_to
+  return $result2;
 }
 
 /**
  * Builds the orphan_object form.
  */
-function orphan_object_formpage($form_state) {
+function orphan_object_formpage(&$form_state) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
 
+  if (!isset($form_state['storage']['step'])) {
+    $form_state['storage']['step'] = 1;
+  }
+  if ($form_state['storage']['step'] == 1) {
+    $resultsarray = orphan_object_getList();
+
+    $oidcount = 1;
+    $orphans = array();
+    foreach ($resultsarray as $resultitem) {
+      $fedora_item = new Fedora_Item($resultitem);
+      //check to see if the fedora object exists, if exists 1 is returned.
+      if ($fedora_item->exists()) {
+        $xml = $fedora_item->export_as_foxml();
+        preg_match('/<audit:justification>(.)*<\/audit:justification>\n<\/audit:record>\n<\/audit:auditTrail>/', $xml, $matches);
+        $history = $matches[0];
+        $history = str_replace(array('<audit:justification>', '</audit:justification>', '\n', '</audit:record>', '</audit:auditTrail>'), '', $history);
+      }
+      else {
+        $history = '';
+      }
+    $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
+    $oidcount++;
+  }
+
+    // Creates elements from the above values and sets up an array for the checkboxes
+    foreach ($orphans as $orphan) {
+      $manage[$orphan['oid']] = '';
+      $form[$orphan['oid']]['pid'] = array
+      (
+        '#value' => $orphan['pid'],
+      );
+      $form[$orphan['oid']]['state'] = array
+      (
+        '#value' => $orphan['state'],
+      );
+      $form[$orphan['oid']]['logmessage'] = array
+      (
+        '#value' => $orphan['logmessage'],
+      );
+    }
+
+    // Creates the checkboxes
+    $form['manage'] = array(
+      '#type' => 'checkboxes',
+      '#options' => $manage,
+    );
+
+    // Creates the Save Configuration button
+    $form['toManage'] = array(
+      '#type' => 'submit',
+      '#value' => 'Manage Selected Object(s)',
+    );
+
+    //Set form submit and theme
+    $form['#submit'][] = 'orphan_object_formpage_submit';
+    $form['#theme'] = 'orphan_object_theme';
+
+    return $form;
+  }
+  elseif ($form_state['storage']['step'] == 2) {
+    $passedarray = array();
+    $sendresults = orphan_object_getList();
+    $passedcount = 0;
+    foreach ($form_state['storage']['values']['1']['manage'] as $key => $element) {
+      $passedarray[$passedcount] = $sendresults[($element-1)];
+      $passedcount++;
+    }
+
+    $sentoidcount = 1;
+    $sentorphans = array();
+    foreach ($passedarray as $passeditem) {
+      if (isset($passeditem)) {
+        $sentorphans[$sentoidcount] = array('oid' => $sentoidcount, 'pid' => $passeditem, 'status' => orphan_object_getState($passeditem), 'log' => '');
+        $sentoidcount++;
+      }
+    }
+    $radioOptions = array(
+      '#type' => 'radios',
+      '#options' => array('A' => 'Activate', 'I' => 'Inactivate', 'D' => 'Delete', 'P' => 'Purge', ),
+      '#prefix' => '<div  class="container-inline">',
+      '#sufix' => '</div>'
+    );
+
+    // Creates elements from the above values and sets up an array for the checkboxes
+    foreach ($sentorphans as $orphan) {
+      // Object Cell
+      $form['orphans'][$orphan['oid']]['pid'] = array( '#value' => $orphan['pid']);
+      $form['orphans'][$orphan['oid']]['identifier'] = array('#type' => 'hidden', '#value' => $orphan['pid']);
+      // Radios Cell
+      $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
+      $form['orphans'][$orphan['oid']]['status'] = $radioOptions;
+      $form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['status'];
+      $form['orphans'][$orphan['oid']]['orgStatus'] = array('#type' => 'hidden', '#value' => $orphan['status']);
+      // Log Message
+      $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield', '#default_value' => $orphan['log']);
+    }
+
+    // Creates the Save Configuration button
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Save Configuration',
+    );
+
+    //Set form submit and theme
+    $form['#submit'][] = 'orphan_object_formpage_submit';
+    $form['#theme'] = 'orphan_object_form_update';
+
+    return $form;
+  } //end else if
 }
 
 /**
  * Sets what occurs when the Save Configuration is clicked.
  */
 function orphan_object_formpage_submit($form, &$form_state) {
-  // Load fedora_item.inc from the fedora_repository module in the api folder.
-  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-}
 
+  global $user;
+  $form_state['storage']['values'][$form_state['storage']['step']]  = $form_state['values'];
+
+  if ($form_state['clicked_button']['#id'] == 'edit-toManage') {
+    $form_state['storage']['step']++;
+  }
+  if ($form_state['clicked_button']['#id'] == 'edit-submit') {
+    $form_state['storage']['step']--;
+    // Load fedora_item.inc from the fedora_repository module in the api folder.
+    module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+
+    foreach ($_POST as $key) {
+      //exit the foreach once all the files have been processed.
+      // [op] = "Save Configuration" is the first element after all the objects
+      if ($key == "Save Configuration") {
+        break;
+      }
+      $logmsg = $key['log'];
+      if ($key['status'] != $key['orgStatus']) {
+        $switch = $key['status'];
+      }
+      else {
+        $switch = "";
+      }
+
+      switch ($switch) {
+        case 'A':
+          $fedora_item = new Fedora_Item($key['identifier']);
+          if ($fedora_item->exists()) {
+            orphan_object_activate_fedora_objects($key['identifier'], $user->uid, $logmsg );
+            drupal_set_message(check_plain($key['identifier']) . ' has been successfully activated.');
+          }
+          else {
+            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+          }
+          break;
+        case 'I':
+          $fedora_item = new Fedora_Item($key['identifier']);
+          if ($fedora_item->exists()) {
+            orphan_object_inactivate_fedora_objects($key['identifier'], $user->uid, $logmsg);
+            drupal_set_message(check_plain($key['identifier']) . ' has been successfully inactivated.');
+          }
+          else {
+            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+          }
+          break;
+        case 'P':
+          $fedora_item = new Fedora_Item($key['identifier']);
+          if ($fedora_item->exists()) {
+            orphan_object_purge_fedora_objects($key['identifier'], $user->uid, $logmsg);
+            drupal_set_message(check_plain($key['identifier']) . ' has been successfully purged.');
+          }
+          else {
+            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+          }
+        break;
+        case 'D':
+          $fedora_item = new Fedora_Item($key['identifier']);
+          if ($fedora_item->exists()) {
+            orphan_object_delete_fedora_objects($key['identifier'], $user->uid, $logmsg);
+            drupal_set_message(check_plain($key['identifier']) . ' has been successfully deleted.');
+          }
+          else {
+            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+          }
+          break;
+        default:
+          drupal_set_message(check_plain($key['identifier']) . ' has not been issued a new state.');
+        break;
+      }
+    }
+    unset($form_state['storage']);
+  }
+}
 
 /**
  * Sets up for the theme.
  */
+
 function orphan_object_theme() {
-  return array(
-    'orphan_object_form' => array(
-      'arguments' => array('form' => NULL),
+  return array
+  (
+    'orphan_object_theme' => array
+    (
+      'arguments' => array('form' => NULL)
     ),
-    'orphan_object_form_update' => array(
-      'arguments' => array('form' => NULL),
+    'orphan_object_form_update' => array
+    (
+      'arguments' => array('form' => NULL)
     ),
   );
 }
@@ -221,16 +273,70 @@ function orphan_object_theme() {
 /**
  * Sets the theme.
  */
+function theme_orphan_object_theme($form) {
+  global $pager_page_array, $pager_total, $pager_total_items;
 
+  $page = isset($_GET['page']) ? $_GET['page'] : '0';
+  $limit = 10;
+  $element = 0;
+  $pager_page_array = explode(',', $page);
+
+
+  $rows = array();
+
+  //Creates the table rows
+  foreach (element_children($form['manage']) as $oid) {
+    $row = array();
+    $row[] = drupal_render($form['manage'][$oid]);
+    $row[] = drupal_render($form[$oid]['pid']);
+    $row[] = drupal_render($form[$oid]['state']);
+    $row[] = drupal_render($form[$oid]['logmessage']);
+    $rows[] = $row;
+  }
+
+
+  //if there are rows add these headers
+  if (count($rows)) {
+    $header = array(t('Manage Object'), t('Object PID'), t('Object State'), t('Last Log Message'));
+  }
+  //otherwise add these headers and give this message
+  else {
+    $header = array(t('Manage Object'), t('Object PID'), t('Object State'), t('Last Log Message'));
+    $row = array();
+    $row[] = array
+    (
+      'data' => t('No Orphans were found'),
+      'colspan' => 2,
+      'style' => 'text-align:center',
+    );
+    $rows[] = $row;
+  }
+  $total = count($rows);
+  $pager_total_items[$element] = $total;
+  $pager_total[$element] = ceil($pager_total_items[$element] / $limit);
+  $pager_page_array[$element] = max(0, min((int)$pager_page_array[$element], ((int)$pager_total[$element]) - 1));
+
+  pager_query("SELECT %d", $limit, 0, NULL, $total);
+
+
+  //set as a table theme and return the output
+  $content = theme('table', $header, $rows);
+  $output = $content . theme('pager');
+  $output .= drupal_render($form);
+  return $output;
+
+  }
+
+/**
+ * Sets the theme.
+ */
 function theme_orphan_object_form_update($form) {
   $rows = array();
 
   //Creates the table rows
   foreach (element_children($form['orphans']) as $oid) {
     $row = array();
-    //$row[] = drupal_render($form['active'][$oid]);
-    //$row[] = drupal_render($form[$oid]['title']);
-    $row[] = drupal_render($form['orphans'][$oid]['identifier']);
+    $row[] = drupal_render($form['orphans'][$oid]['pid']);
     $row[] = drupal_render($form['orphans'][$oid]['status']);
     $row[] = drupal_render($form['orphans'][$oid]['log']);
     $rows[] = $row;
@@ -242,11 +348,11 @@ function theme_orphan_object_form_update($form) {
   }
   //otherwise add these headers and give this message
   else {
-    $header = array(t('Identifier'), t('Status'), t('Log Message'));
+    $header = array(t('Identifiers'), t('Status'), t('Log Message'));
     $row = array();
     $row[] = array
     (
-      'data' => t('No Orphans were found'),
+      'data' => t('No Orphans were selected'),
       'colspan' => 2,
       'style' => 'text-align:center',
     );
@@ -295,8 +401,8 @@ function orphan_object_delete_fedora_objects($objects, $uid, $user_set_log = "")
         else {
           $ownerId = NULL;
         }
-        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
-        $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
+        $log_message = "Object " . $value . " has been deleted by user: {" . $uid . "}. " . $user_set_log;
+        $fedora_item->modify_object($label, $state, $ownerId, $log_message, TRUE);
         $results["success"][] = $value;
     }
     else {
@@ -376,8 +482,8 @@ function orphan_object_inactivate_fedora_objects($objects, $uid, $user_set_log =
         else {
           $ownerId = NULL;
         }
-        $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
-        $fedora_item->modify_object($label, $state, $ownerId , $logMessage, TRUE);
+        $log_message = "Object " . $value . " has been set to inactive by user: {" . $uid . "}. " . $user_set_log;
+        $fedora_item->modify_object($label, $state, $ownerId , $log_message, TRUE);
         $results["success"][] = $value;
     }
     else {
@@ -424,7 +530,7 @@ function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "
           $ownerId = NULL;
         }
         $log_message = "Object " . $value . " is being set to active by user: {" . $uid . "}. " . $user_set_log;
-        $fedora_item->modify_object($label, $state, $ownerId, $logMessage, TRUE);
+        $fedora_item->modify_object($label, $state, $ownerId, $log_message, TRUE);
         $results["success"][] = $value;
     }
     else {
@@ -436,193 +542,83 @@ function orphan_object_activate_fedora_objects($objects, $uid, $user_set_log = "
 }
 
 /**
- * Function: orphan_objects_getlist
+ * Function: orphan_objects_getList
  *
  * Description: Returns an array containing all the orphan objects in the fedora repository
  *
  * @return array
  */
-function orphan_object_getlist() {
+
+function orphan_object_getList() {
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
   module_load_include('inc', 'fedora_repository', 'ObjectHelper');
 
-  $restricted = variable_get('fedora_namespace_restriction_enforced', TRUE);
+  $collectionarray = array();
 
-  //query grabs everything in the repository
-  $everythingquery = 'select $object $title from <#ri>
-                                   where ($object <dc:title> $title)';
-
-  //convert the query into an array, method based off get_collections_as_option_array() from api/fedora_utils.inc
-  //all other queries use this same method but with different variable names
-  $everythingurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-  $everythingurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-  $everythingcontent = do_curl($everythingurl . htmlentities(urlencode($everythingquery)));
-  $everythinglist = explode("\n", $everythingcontent);
-  array_shift($everythinglist);
-  $everythinglist = preg_replace('/info:fedora\//', '', $everythinglist);
-  $everything = array();
-  foreach ($everythinglist as $everythingitem) {   //removes  blanks
-    if ($everythingitem) {
-      $everythingparts = explode(',', $everythingitem);
-      array_push($everything, $everythingparts[0]);  //place only the pid in the array
-    }
-  }
-
-  //grabs all the collection pids
-  $collectionsquery = 'select $object $title from <#ri>
+  $collectionquery = 'select $object $title from <#ri>
                             where ($object <dc:title> $title
-                              and $object <info:fedora/fedora-system:def/model#hasModel> <info:fedora/islandora:collectionCModel>)
-                            order by $title';
-  $collectionsurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-  $collectionsurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-  $collectionscontent = do_curl($collectionsurl . htmlentities(urlencode($collectionsquery)));
-  $collectionslist = explode("\n", $collectionscontent);
-  array_shift($collectionslist);
-  $collectionslist = preg_replace('/info:fedora\//', '', $collectionslist);
-  $collections = array();
-  foreach ($collectionslist as $collectionsitem) {   //removes  blanks
-    if ($collectionsitem) {
-      $collectionsparts = explode(',', $collectionsitem);
-      array_push($collections, $collectionsparts[0]);
+                              and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/islandora:sp_generic_collection>)';
+  $collectionurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+  $collectionurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
+  $collectioncontent = do_curl($collectionurl . htmlentities(urlencode($collectionquery)));
+  $collectionlist = explode("\n", $collectioncontent);
+
+
+  array_shift($collectionlist);
+
+  $collectionlist = preg_replace('/info:fedora\//', '', $collectionlist);
+  $collectionarray = array();
+  foreach ($collectionlist as $collectionitem) {   //removes  blanks
+    if ($collectionitem) {
+      $collectionparts = explode(',', $collectionitem);
+      array_push($collectionarray, $collectionparts[0]);
     }
   }
 
-  //an array to hold all the results of the upcoming foreach
-  $collectionsarray = array();
+  $nidarray = array();
+  $pidarray = array();
+  $existingnodes = array();
+  $nonexistingnodes = array();
+  $npidarray = array();
 
-  //used to grab all the objects that are members of the collections from the previous query
-  foreach ($collections as $cpid) {
+  $results = db_query("SELECT nid FROM {node_fedora_objects}");
 
-    $cpidquery = 'select $object $title from <#ri>
-                              where ($object <dc:title> $title
-                                and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/' . $cpid . '>)';
-    $cpidurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-    $cpidurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-    $cpidcontent = do_curl($cpidurl . htmlentities(urlencode($cpidquery)));
-    $cpidlist = explode("\n", $cpidcontent);
-    array_shift($cpidlist);
-    $cpidlist = preg_replace('/info:fedora\//', '', $cpidlist);
-    $cpidarray = array();
-    foreach ($cpidlist as $cpiditem) {   //removes  blanks
-      if ($cpiditem) {
-        $cpidparts = explode(',', $cpiditem);
-        array_push($cpidarray, $cpidparts[0]);
-      }
-    }
-
-  //merge all the results into one array
-  $collectionsarray = array_merge($collectionsarray, $cpidarray);
+  while ($row = db_fetch_object($results)) {
+    $nidarray[] = $row->nid;
 
   }
-
-  //set up variables to be used in upcoming while
-  $objectsarray = array();
-  $nextarray = array();
-  $queryarray = $collectionsarray;
-  $done = 1;
-
-  //used to grab all the objects that are members of the objects held within $queryarray and any
-  //objects that members of those objects, and so on
-  while ($done > 0) {
-    //set $done to 0 so that if nothing is done the loop ends
-    $done = 0;
-    foreach ($queryarray as $opid) {
-
-      $opidquery = 'select $object $title from <#ri>
-                                where ($object <dc:title> $title
-                                  and $object <fedora-rels-ext:isMemberOf><info:fedora/' . $opid . '>)';
-      $opidurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-      $opidurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-      $opidcontent = do_curl($opidurl . htmlentities(urlencode($opidquery)));
-      $opidlist = explode("\n", $opidcontent);
-      array_shift($opidlist);
-      $opidlist = preg_replace('/info:fedora\//', '', $opidlist);
-      $opidarray = array();
-      foreach ($opidlist as $opiditem) {   //removes  blanks
-        if ($opiditem) {
-          $opidparts = explode(',', $opiditem);
-          array_push($opidarray, $opidparts[0]);
-        }
-      }
-
-      //if the $opidarray is not empty merge the results into $objectsarray and $nextarray, and increase done
-      if (!empty($opidarray)) {
-        $objectsarray = array_merge($objectsarray, $opidarray);
-        $nextarray = array_merge($nextarray, $opidarray);
-        $done++;
-      }
+  foreach ($nidarray as $checknid) {
+    $test_node = node_load($checknid);
+    if ($test_node != FALSE) {
+      $existingnodes[] = $checknid;
     }
-    //make $queryarray equal to $nextarray
-    $queryarray = $nextarray;
-  }
-
-  //query to grab all the content models
-  $cmodelsquery = 'select $object $title from <#ri>
-						            where ($object <dc:title> $title
-                                      and ($object <fedora-model:hasModel> <info:fedora/fedora-system:ContentModel-3.0>
-                                      or $object <fedora-rels-ext:isMemberOfCollection> <info:fedora/islandora:ContentModelsCollection>))
-                                    order by $title';
-  $cmodelsurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-  $cmodelsurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-  $cmodelscontent = do_curl($cmodelsurl . htmlentities(urlencode($cmodelsquery)));
-  $cmodelslist = explode("\n", $cmodelscontent);
-  array_shift($cmodelslist);
-  $cmodelslist = preg_replace('/info:fedora\//', '', $cmodelslist);
-  $cmodels = array();
-  foreach ($cmodelslist as $cmodelsitem) {   //removes  blanks
-    if ($cmodelsitem) {
-      $cmodelsparts = explode(',', $cmodelsitem);
-      array_push($cmodels, $cmodelsparts[0]);
+    else {
+      $nonexistingnodes[] = $checknid;
     }
   }
 
-  //query to grab all the service models
-  $smodelsquery = 'select $object $title from <#ri>
-                                where ($object <dc:title> $title
-                                  and ($object <fedora-model:hasModel> <info:fedora/fedora-system:ServiceDefinition-3.0>))
-                                order by $title';
-  $smodelsurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-  $smodelsurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-  $smodelscontent = do_curl($smodelsurl . htmlentities(urlencode($smodelsquery)));
-  $smodelslist = explode("\n", $smodelscontent);
-  array_shift($smodelslist);
-  $smodelslist = preg_replace('/info:fedora\//', '', $smodelslist);
-  $smodels = array();
-  foreach ($smodelslist as $smodelsitem) {   //removes  blanks
-    if ($smodelsitem) {
-      $smodelsparts = explode(',', $smodelsitem);
-      array_push($smodels, $smodelsparts[0]);
+  if (!empty($existingnodes)) {
+    $placeholders = db_placeholders($existingnodes);
+    $pidresults = db_query("SELECT f.pid FROM {node_fedora_objects} f WHERE f.nid IN ($placeholders)", $existingnodes);
+
+    while ($row = db_fetch_object($pidresults)) {
+      $pidarray[] = $row->pid;
     }
   }
 
-  //query to grab all the service deployment
-  $sdeploymentquery = 'select $object $title from <#ri>
-                                where ($object <dc:title> $title
-                                  and ($object <fedora-model:hasModel> <info:fedora/fedora-system:ServiceDeployment-3.0>))
-                                order by $title';
-  $sdeploymenturl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
-  $sdeploymenturl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
-  $sdeploymentcontent = do_curl($sdeploymenturl . htmlentities(urlencode($sdeploymentquery)));
-  $sdeploymentlist = explode("\n", $sdeploymentcontent);
-  array_shift($sdeploymentlist);
-  $sdeploymentlist = preg_replace('/info:fedora\//', '', $sdeploymentlist);
-  $sdeployment = array();
-  foreach ($sdeploymentlist as $sdeploymentitem) {   //removes  blanks
-    if ($sdeploymentitem) {
-      $sdeploymentparts = explode(',', $sdeploymentitem);
-      array_push($sdeployment, $sdeploymentparts[0]);
+  if (!empty($nonexistingnodes)) {
+    $placeholders = db_placeholders($nonexistingnodes);
+    $pidresults = db_query("SELECT f.pid FROM {node_fedora_objects} f WHERE f.nid IN ($placeholders)", $existingnodes);
+
+    while ($row = db_fetch_object($npidresults)) {
+      $npidarray[] = $row->pid;
     }
   }
 
-  //Whole bunch of array_diffs using the arrays created from all the previous operations
-  //removes everything that isn't an orphan and returns only the orphans
-  $returnlist = array_diff($everything, $collectionsarray);
-  $returnlist = array_diff($returnlist, $objectsarray);
-  $returnlist = array_diff($returnlist, $cmodels);
-  $returnlist = array_diff($returnlist, $smodels);
-  $returnlist = array_diff($returnlist, $sdeployment);
-  $returnlist = array_diff($returnlist, $collections);
+  $returnlist = array_diff($collectionarray, $pidarray);
+  $reversereturnlist = array_intersect($pidarray, $collectionarray);
+  $nonexistlist = array_intersect($reversereturnlist, $npidarray);
+  $returnlist = array_merge($returnlist, $nonexistlist);
 
   return $returnlist;
 }
-
