@@ -81,26 +81,27 @@ function orphan_object_formpage(&$form_state) {
       else {
         $history = '';
       }
-    $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
-    $oidcount++;
-  }
+      $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
+      $oidcount++;
+    }
+    $form_state['storage']['orphans'] = $orphans;
 
-    // Creates elements from the above values and sets up an array for the checkboxes
-    foreach ($orphans as $orphan) {
-      $manage[$orphan['oid']] = '';
-      $form[$orphan['oid']]['pid'] = array
+  // Creates elements from the above values and sets up an array for the checkboxes
+  foreach ($orphans as $orphan) {
+    $manage[$orphan['oid']] = '';
+    $form[$orphan['oid']]['pid'] = array
       (
         '#value' => $orphan['pid'],
       );
-      $form[$orphan['oid']]['state'] = array
+    $form[$orphan['oid']]['state'] = array
       (
         '#value' => $orphan['state'],
       );
-      $form[$orphan['oid']]['logmessage'] = array
+    $form[$orphan['oid']]['logmessage'] = array
       (
         '#value' => $orphan['logmessage'],
       );
-    }
+  }
 
     // Creates the checkboxes
     $form['manage'] = array(
@@ -121,19 +122,12 @@ function orphan_object_formpage(&$form_state) {
     return $form;
   }
   elseif ($form_state['storage']['step'] == 2) {
-    $passedarray = array();
-    $sendresults = orphan_object_getList();
-    $passedcount = 0;
-    foreach ($form_state['storage']['values']['1']['manage'] as $key => $element) {
-      $passedarray[$passedcount] = $sendresults[($element-1)];
-      $passedcount++;
-    }
 
     $sentoidcount = 1;
     $sentorphans = array();
-    foreach ($passedarray as $passeditem) {
+    foreach ($form_state['storage']['passed'] as $passeditem) {
       if (isset($passeditem)) {
-        $sentorphans[$sentoidcount] = array('oid' => $sentoidcount, 'pid' => $passeditem, 'status' => orphan_object_getState($passeditem), 'log' => '');
+        $sentorphans[$sentoidcount] = $passeditem;
         $sentoidcount++;
       }
     }
@@ -152,10 +146,10 @@ function orphan_object_formpage(&$form_state) {
       // Radios Cell
       $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
       $form['orphans'][$orphan['oid']]['status'] = $radioOptions;
-      $form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['status'];
-      $form['orphans'][$orphan['oid']]['orgStatus'] = array('#type' => 'hidden', '#value' => $orphan['status']);
+      $form['orphans'][$orphan['oid']]['status']['#default_value'] = $orphan['state'];
+      $form['orphans'][$orphan['oid']]['orgStatus'] = array('#type' => 'hidden', '#value' => $orphan['state']);
       // Log Message
-      $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield', '#default_value' => $orphan['log']);
+      $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield');
     }
 
     // Creates the Save Configuration button
@@ -178,10 +172,18 @@ function orphan_object_formpage(&$form_state) {
 function orphan_object_formpage_submit($form, &$form_state) {
 
   global $user;
-  $form_state['storage']['values'][$form_state['storage']['step']]  = $form_state['values'];
 
   if ($form_state['clicked_button']['#id'] == 'edit-toManage') {
     $form_state['storage']['step']++;
+    $passedarray = array();
+    $passedcount = 0;
+    foreach ($form_state['values']['manage'] as $key => $element) {
+      if (isset($element)) {
+        $passedarray[$passedcount] = $form_state['storage']['orphans'][$element];
+        $passedcount++;
+      }
+    }
+    $form_state['storage']['passed'] = $passedarray;
   }
   if ($form_state['clicked_button']['#id'] == 'edit-submit') {
     $form_state['storage']['step']--;
@@ -210,7 +212,7 @@ function orphan_object_formpage_submit($form, &$form_state) {
             drupal_set_message(check_plain($key['identifier']) . ' has been successfully activated.');
           }
           else {
-            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+            drupal_set_message(check_plain($key['identifier']) . ' orphan was purged by another user or the PID is nonexistent.');
           }
           break;
         case 'I':
@@ -220,7 +222,7 @@ function orphan_object_formpage_submit($form, &$form_state) {
             drupal_set_message(check_plain($key['identifier']) . ' has been successfully inactivated.');
           }
           else {
-            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+            drupal_set_message(check_plain($key['identifier']) . ' orphan was purged by another user or the PID is nonexistent.');
           }
           break;
         case 'P':
@@ -230,7 +232,7 @@ function orphan_object_formpage_submit($form, &$form_state) {
             drupal_set_message(check_plain($key['identifier']) . ' has been successfully purged.');
           }
           else {
-            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+            drupal_set_message(check_plain($key['identifier']) . ' orphan was purged by another user or the PID is nonexistent.');
           }
         break;
         case 'D':
@@ -240,7 +242,7 @@ function orphan_object_formpage_submit($form, &$form_state) {
             drupal_set_message(check_plain($key['identifier']) . ' has been successfully deleted.');
           }
           else {
-            drupal_set_message(check_plain($key['identifier']) . ' is a nonexistent PID.');
+            drupal_set_message(check_plain($key['identifier']) . ' orphan was purged by another user or the PID is nonexistent.');
           }
           break;
         default:
@@ -558,50 +560,16 @@ function orphan_object_getList() {
     }
   }
 
-  $nidarray = array();
-  $pidarray = array();
-  $existingnodes = array();
-  $nonexistingnodes = array();
-  $npidarray = array();
+  $results = array();
 
-  $results = db_query("SELECT nid FROM {node_fedora_objects}");
+  $query = db_query("SELECT pid FROM {node_fedora_objects}");
 
-  while ($row = db_fetch_object($results)) {
-    $nidarray[] = $row->nid;
 
-  }
-  foreach ($nidarray as $checknid) {
-    $test_node = node_load($checknid);
-    if ($test_node != FALSE) {
-      $existingnodes[] = $checknid;
-    }
-    else {
-      $nonexistingnodes[] = $checknid;
-    }
+  while ($resultrow = db_fetch_object($query)) {
+    $results[] = $resultrow->pid;
   }
 
-  if (!empty($existingnodes)) {
-    $placeholders = db_placeholders($existingnodes);
-    $pidresults = db_query("SELECT f.pid FROM {node_fedora_objects} f WHERE f.nid IN ($placeholders)", $existingnodes);
-
-    while ($row = db_fetch_object($pidresults)) {
-      $pidarray[] = $row->pid;
-    }
-  }
-
-  if (!empty($nonexistingnodes)) {
-    $placeholders = db_placeholders($nonexistingnodes);
-    $pidresults = db_query("SELECT f.pid FROM {node_fedora_objects} f WHERE f.nid IN ($placeholders)", $existingnodes);
-
-    while ($row = db_fetch_object($npidresults)) {
-      $npidarray[] = $row->pid;
-    }
-  }
-
-  $returnlist = array_diff($collectionarray, $pidarray);
-  $reversereturnlist = array_intersect($pidarray, $collectionarray);
-  $nonexistlist = array_intersect($reversereturnlist, $npidarray);
-  $returnlist = array_merge($returnlist, $nonexistlist);
+  $returnlist = array_diff($collectionarray, $results);
 
   return $returnlist;
 }
