@@ -60,16 +60,17 @@ function orphan_object_getState($incpid) {
  */
 function orphan_object_formpage(&$form_state) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  global $base_url;
 
   if (!isset($form_state['storage']['step'])) {
     $form_state['storage']['step'] = 1;
   }
   if ($form_state['storage']['step'] == 1) {
     $resultsarray = orphan_object_getList();
-
     $oidcount = 1;
     $orphans = array();
     foreach ($resultsarray as $resultitem) {
+      $title = "";
       $fedora_item = new Fedora_Item($resultitem);
       //check to see if the fedora object exists, if exists 1 is returned.
       if ($fedora_item->exists()) {
@@ -77,11 +78,17 @@ function orphan_object_formpage(&$form_state) {
         preg_match('/<audit:justification>(.)*<\/audit:justification>\n<\/audit:record>\n<\/audit:auditTrail>/', $xml, $matches);
         $history = $matches[0];
         $history = str_replace(array('<audit:justification>', '</audit:justification>', '\n', '</audit:record>', '</audit:auditTrail>'), '', $history);
+        $title = $fedora_item->objectProfile->objLabel;
       }
       else {
         $history = '';
       }
-      $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
+      if ($title == ""  || empty($title)) {
+        $title = $resultitem;
+      }
+      $url = $base_url . "/fedora/repository/$resultitem";
+      $owner = get_file_owner_name($resultitem);
+      $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'title' => '<a href = "' . $url . '">' . $title . '</a>', 'owner' => $owner, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
       $oidcount++;
     }
     $form_state['storage']['orphans'] = $orphans;
@@ -91,7 +98,11 @@ function orphan_object_formpage(&$form_state) {
     $manage[$orphan['oid']] = '';
     $form[$orphan['oid']]['pid'] = array
       (
-        '#value' => $orphan['pid'],
+        '#value' => $orphan['title'],
+      );
+    $form[$orphan['oid']]['owner'] = array
+      (
+        '#value' => $orphan['owner'],
       );
     $form[$orphan['oid']]['state'] = array
       (
@@ -122,7 +133,7 @@ function orphan_object_formpage(&$form_state) {
     return $form;
   }
   elseif ($form_state['storage']['step'] == 2) {
-
+    drupal_set_message(t("Warning: Any items purged from this page will be permanently removed."), "error");
     $sentoidcount = 1;
     $sentorphans = array();
     foreach ($form_state['storage']['passed'] as $passeditem) {
@@ -176,11 +187,9 @@ function orphan_object_formpage_submit($form, &$form_state) {
   if ($form_state['clicked_button']['#id'] == 'edit-toManage') {
     $form_state['storage']['step']++;
     $passedarray = array();
-    $passedcount = 0;
     foreach ($form_state['values']['manage'] as $key => $element) {
       if (isset($element)) {
-        $passedarray[$passedcount] = $form_state['storage']['orphans'][$element];
-        $passedcount++;
+        $passedarray[] = $form_state['storage']['orphans'][$element];
       }
     }
     $form_state['storage']['passed'] = $passedarray;
@@ -282,6 +291,7 @@ function theme_orphan_object_theme($form) {
     $row = array();
     $row[] = drupal_render($form['manage'][$oid]);
     $row[] = drupal_render($form[$oid]['pid']);
+    $row[] = drupal_render($form[$oid]['owner']);
     $row[] = drupal_render($form[$oid]['state']);
     $row[] = drupal_render($form[$oid]['logmessage']);
     $rows[] = $row;
@@ -289,16 +299,16 @@ function theme_orphan_object_theme($form) {
 
   //if there are rows add these headers
   if (count($rows)) {
-    $header = array(t('Manage Object'), t('Object PID'), t('Object State'), t('Last Log Message'));
+    $header = array(t('Manage Object'), t('Object'), t('Object Owner'), t('Object State'), t('Last Log Message'));
   }
   //otherwise add these headers and give this message
   else {
-    $header = array(t('Manage Object'), t('Object PID'), t('Object State'), t('Last Log Message'));
+    $header = array(t('Manage Object'), t('Object'), t('Object Owner'), t('Object State'), t('Last Log Message'));
     $row = array();
     $row[] = array
     (
       'data' => t('No Orphans were found'),
-      'colspan' => 2,
+      'colspan' => 5,
       'style' => 'text-align:center',
     );
     $rows[] = $row;
@@ -306,7 +316,7 @@ function theme_orphan_object_theme($form) {
 
   //set as a table theme and return the output
   $content = theme('table', $header, $rows);
-  $output = $content;
+  $output = "<div id = 'table-scroll' style = 'height: 400px; overflow-y: scroll;'> " . $content . "</div>";
   $output .= drupal_render($form);
   return $output;
 
@@ -345,7 +355,8 @@ function theme_orphan_object_form_update($form) {
   }
 
   //set as a table theme and return the output
-  $output = theme('table', $header, $rows);
+  $content = theme('table', $header, $rows);
+  $output = "<div id = 'table-scroll' style = 'height: 400px; overflow-y: scroll;'> " . $content . "</div>";
   $output .= drupal_render($form);
   return $output;
 }
@@ -377,7 +388,7 @@ function orphan_object_delete_fedora_objects($objects, $user, $user_set_log = ""
         $state = 'D'; //Set the object to deleted
         $label = $fedora_item->objectProfile->objLabel; // Object Label
         $url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
-        $url .= "/objects?terms=$pid&ownerId=true&resultFormat=xml";
+        $url .= "/objects?terms=$value&ownerId=true&resultFormat=xml";
         $resultxml = do_curl($url);
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
@@ -458,7 +469,7 @@ function orphan_object_inactivate_fedora_objects($objects, $user, $user_set_log 
         $state = 'I'; //Set the object to inactivated
         $label = $fedora_item->objectProfile->objLabel; // Object Label
         $url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
-        $url .= "/objects?terms=$pid&ownerId=true&resultFormat=xml";
+        $url .= "/objects?terms=$value&ownerId=true&resultFormat=xml";
         $resultxml = do_curl($url);
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
@@ -505,7 +516,7 @@ function orphan_object_activate_fedora_objects($objects, $user, $user_set_log = 
         $state = 'A'; //Set the object to active
         $label = $fedora_item->objectProfile->objLabel; // needs to be filled in with objects label.
         $url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
-        $url .= "/objects?terms=$pid&ownerId=true&resultFormat=xml";
+        $url .= "/objects?terms=$value&ownerId=true&resultFormat=xml";
         $resultxml = do_curl($url);
         $resultelements = simplexml_load_string($resultxml);
         if (!empty($resultelements)) {
