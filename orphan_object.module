@@ -88,7 +88,7 @@ function orphan_object_formpage(&$form_state) {
       }
       $url = $base_url . "/fedora/repository/$resultitem";
       $owner = get_file_owner_name($resultitem);
-      $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'title' => '<a href = "' . $url . '">' . $title . '</a>', 'owner' => $owner, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
+      $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'title' => '<a href = "' . $url . '" target="_blank">' . $title . '</a>', 'owner' => $owner, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
       $oidcount++;
     }
     $form_state['storage']['orphans'] = $orphans;
@@ -126,6 +126,11 @@ function orphan_object_formpage(&$form_state) {
       '#value' => 'Manage Selected Object(s)',
     );
 
+    $form['toNodeAssociation'] = array(
+      '#type' => 'submit',
+      '#value' => 'Associate Object(s) to Node(s)',
+    );
+
     //Set form submit and theme
     $form['#submit'][] = 'orphan_object_formpage_submit';
     $form['#theme'] = 'orphan_object_theme';
@@ -134,12 +139,10 @@ function orphan_object_formpage(&$form_state) {
   }
   elseif ($form_state['storage']['step'] == 2) {
     drupal_set_message(t("Warning: Any items purged from this page will be permanently removed."), "error");
-    $sentoidcount = 1;
     $sentorphans = array();
     foreach ($form_state['storage']['passed'] as $passeditem) {
       if (isset($passeditem)) {
-        $sentorphans[$sentoidcount] = $passeditem;
-        $sentoidcount++;
+        $sentorphans[] = $passeditem;
       }
     }
     $radioOptions = array(
@@ -152,7 +155,7 @@ function orphan_object_formpage(&$form_state) {
     // Creates elements from the above values and sets up an array for the checkboxes
     foreach ($sentorphans as $orphan) {
       // Object Cell
-      $form['orphans'][$orphan['oid']]['pid'] = array( '#value' => $orphan['pid']);
+      $form['orphans'][$orphan['oid']]['title'] = array( '#value' => $orphan['title']);
       $form['orphans'][$orphan['oid']]['identifier'] = array('#type' => 'hidden', '#value' => $orphan['pid']);
       // Radios Cell
       $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
@@ -172,6 +175,48 @@ function orphan_object_formpage(&$form_state) {
     //Set form submit and theme
     $form['#submit'][] = 'orphan_object_formpage_submit';
     $form['#theme'] = 'orphan_object_form_update';
+
+    return $form;
+  } //end else if step 2
+  elseif ($form_state['storage']['step'] == 3) {
+    $sentorphans = array();
+    foreach ($form_state['storage']['passed'] as $passeditem) {
+      if (isset($passeditem)) {
+        $sentorphans[] = $passeditem;
+      }
+    }
+
+    $selectOptions = array("" => "- Select Node To Link Object To - ");
+    $query =  db_query(db_rewrite_sql("SELECT * FROM {node} n"));
+    while ($row_nodes = db_fetch_object($query)) {
+      $selectOptions[$row_nodes->nid] = $row_nodes->nid . " : " . $row_nodes->title;
+
+    }
+
+    // Creates elements from the above values and sets up an array for the checkboxes
+    foreach ($sentorphans as $orphan) {
+      // Object Cell
+      $form['orphans'][$orphan['oid']]['title'] = array( '#value' => $orphan['title']);
+      $form['orphans'][$orphan['oid']]['identifier'] = array('#type' => 'hidden', '#value' => $orphan['pid']);
+      // Select Cell
+      $form['orphans'][$orphan['oid']]['#tree'] = TRUE;
+      $form['orphans'][$orphan['oid']]['nid'] = array(
+       '#type' => 'select',
+       '#options' => $selectOptions,
+      );
+      // Log Message
+      $form['orphans'][$orphan['oid']]['log'] = array('#type' => 'textfield', '#size' => 45);
+    }
+
+    // Creates the Save Configuration button
+    $form['associate'] = array(
+      '#type' => 'submit',
+      '#value' => 'Save Node Associations',
+    );
+
+    //Set form submit and theme
+    $form['#submit'][] = 'orphan_object_formpage_submit';
+    $form['#theme'] = 'orphan_object_form_associate';
 
     return $form;
   } //end else if
@@ -194,6 +239,61 @@ function orphan_object_formpage_submit($form, &$form_state) {
     }
     $form_state['storage']['passed'] = $passedarray;
   }
+  if ($form_state['clicked_button']['#id'] == 'edit-toNodeAssociation') {
+    $form_state['storage']['step'] = 3; //increment to the 3rd step
+    $passedarray = array();
+    foreach ($form_state['values']['manage'] as $key => $element) {
+      if (isset($element)) {
+        $passedarray[] = $form_state['storage']['orphans'][$element];
+      }
+    }
+    $form_state['storage']['passed'] = $passedarray;
+  }
+  if ($form_state['clicked_button']['#id'] == 'edit-associate') {
+    $form_state['storage']['step'] = 1; //reset to step one
+    // Load fedora_item.inc from the fedora_repository module in the api folder.
+    module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+
+    foreach ($_POST as $key) {
+      //exit the foreach once all the files have been processed.
+      // [op] = "Save Node Associations" is the first element after all the objects
+      if ($key == "Save Node Associations") {
+        break;
+      }
+      $node = node_load($key['nid']);
+      //only create a relationship if the node is existing at the time of processing
+      if ($key['nid'] != "" &&  $node != FALSE) {
+        $fedora_item = new Fedora_Item($key['identifier']);
+        if ($fedora_item->exists()) {
+          //activate object
+          orphan_object_activate_fedora_objects($key['identifier'], $user, $key['log'] );
+          //delete any existing relationships
+          db_query("DELETE FROM {node_fedora_objects} WHERE pid = '%s'", $file->pid);
+          //delete permissions
+          $result = db_query("SELECT iapid FROM {islandora_attachment_permissions} WHERE pid = '%s'", $key['identifier']);
+          $iapid = db_result($result);
+          db_query("DELETE FROM {islandora_attachment_permissions} WHERE pid = '%s'", $key['identifier']);
+          db_query("DELETE FROM {islandora_attachment_permission_users} WHERE ubid = %d", $iapid );
+          db_query("DELETE FROM {islandora_attachment_permission_roles} WHERE rbid = %d", $iapid );
+          //Insert new relation and create a public permission record
+          db_query("INSERT INTO {node_fedora_objects} (nid, pid, ownerid) VALUES (%d, '%s', %d)", $key['nid'], $key['identifier'], $user->uid);
+          db_query("INSERT INTO {islandora_attachment_permissions} (public_permission, private_permission, pid) VALUES (1, 0, '%s')", $key['identifier']);
+          //attach new public XACML
+          orphan_object_create_xacml_policy_public($key['identifier'], $user-uid, $node->uid);
+          //Set Success Message
+          drupal_set_message(check_plain($key['identifier']) . ' has been successfully activated and is now linked with node ID ' . $key['nid'] . '.');
+        }
+        else {
+          drupal_set_message(check_plain($key['identifier']) . ' orphan was purged by another user or the PID is nonexistent.');
+        }
+      }
+      else {
+        drupal_set_message(check_plain($key['identifier']) . ' has not been link to Node ID ' . $key['nid'] . ' because the node no longer exists.');
+      }
+    }
+
+  }
+
   if ($form_state['clicked_button']['#id'] == 'edit-submit') {
     $form_state['storage']['step']--;
     // Load fedora_item.inc from the fedora_repository module in the api folder.
@@ -278,6 +378,10 @@ function orphan_object_theme() {
     (
       'arguments' => array('form' => NULL)
     ),
+    'orphan_object_form_associate' => array
+    (
+      'arguments' => array('form' => NULL)
+    ),
   );
 }
 
@@ -323,7 +427,7 @@ function theme_orphan_object_theme($form) {
   }
 
 /**
- * Sets the theme.
+ * Sets the theme for the form page 2 by creating a scrollable div with the forms table and results in it.
  */
 function theme_orphan_object_form_update($form) {
   $rows = array();
@@ -331,7 +435,7 @@ function theme_orphan_object_form_update($form) {
   //Creates the table rows
   foreach (element_children($form['orphans']) as $oid) {
     $row = array();
-    $row[] = drupal_render($form['orphans'][$oid]['pid']);
+    $row[] = drupal_render($form['orphans'][$oid]['title']);
     $row[] = drupal_render($form['orphans'][$oid]['status']);
     $row[] = drupal_render($form['orphans'][$oid]['log']);
     $rows[] = $row;
@@ -339,16 +443,55 @@ function theme_orphan_object_form_update($form) {
 
   //if there are rows add these headers
   if (count($rows)) {
-    $header = array(t('Identifiers'), t('Status'), t('Log Message'));
+    $header = array(t('Object'), t('Status'), t('Log Message'));
   }
   //otherwise add these headers and give this message
   else {
-    $header = array(t('Identifiers'), t('Status'), t('Log Message'));
+    $header = array(t('Object'), t('Status'), t('Log Message'));
     $row = array();
     $row[] = array
     (
       'data' => t('No Orphans were selected'),
-      'colspan' => 2,
+      'colspan' => 3,
+      'style' => 'text-align:center',
+    );
+    $rows[] = $row;
+  }
+
+  //set as a table theme and return the output
+  $content = theme('table', $header, $rows);
+  $output = "<div id = 'table-scroll' style = 'height: 400px; overflow-y: scroll;'> " . $content . "</div>";
+  $output .= drupal_render($form);
+  return $output;
+}
+
+/**
+ * Sets the theme for the form page 3 by creating a scrollable div with the forms table and results in it.
+ */
+function theme_orphan_object_form_associate($form) {
+  $rows = array();
+
+  //Creates the table rows
+  foreach (element_children($form['orphans']) as $oid) {
+    $row = array();
+    $row[] = drupal_render($form['orphans'][$oid]['title']);
+    $row[] = drupal_render($form['orphans'][$oid]['nid']);
+    $row[] = drupal_render($form['orphans'][$oid]['log']);
+    $rows[] = $row;
+  }
+
+  //if there are rows add these headers
+  if (count($rows)) {
+    $header = array(t('Object'), t('Link To Node'), t('Log Message'));
+  }
+  //otherwise add these headers and give this message
+  else {
+    $header = array(t('Object'), t('Link To Node'), t('Log Message'));
+    $row = array();
+    $row[] = array
+    (
+      'data' => t('No Orphans were selected'),
+      'colspan' => 3,
       'style' => 'text-align:center',
     );
     $rows[] = $row;
@@ -553,12 +696,11 @@ function orphan_object_getList() {
 
   $collectionquery = 'select $object $title from <#ri>
                             where ($object <dc:title> $title
-                              and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/islandora:Generic_Collection>)';
+                              and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/islandora:sp_generic_collection>)';
   $collectionurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
   $collectionurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
   $collectioncontent = do_curl($collectionurl . htmlentities(urlencode($collectionquery)));
   $collectionlist = explode("\n", $collectioncontent);
-
 
   array_shift($collectionlist);
 
@@ -575,7 +717,6 @@ function orphan_object_getList() {
 
   $query = db_query("SELECT pid FROM {node_fedora_objects}");
 
-
   while ($resultrow = db_fetch_object($query)) {
     $results[] = $resultrow->pid;
   }
@@ -583,4 +724,55 @@ function orphan_object_getList() {
   $returnlist = array_diff($collectionarray, $results);
 
   return $returnlist;
+}
+/**
+ * Generates and Attaches XACML Policy to specificied PID using Owner and Node Owner.
+ * For public policy only the owner, node owner and admins are granted management access and there is no restrictions on viewing
+ *  @param pid
+ *  Object PID
+ *  @param uid
+ *  Current User's Id - get name and set to management
+ *  @param node_ownerid
+ *  Node Owner's id - get name and set to management
+ *
+ */
+function orphan_object_create_xacml_policy_public($pid, $uid, $node_ownerid) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  module_load_include('inc', 'islandora_xacml_api', 'Xacml');
+  module_load_include('inc', 'islandora_xacml_api', 'XacmlException');
+
+  $sql = "SELECT name FROM {users} WHERE uid = '" . $uid . "'";
+  $user_result = db_query($sql);
+  $user_name = db_result($user_result);
+
+  //Only need node owner if it is a different user
+  if ($uid != $node_ownerid) {
+    $sql2 = "SELECT name FROM {users} WHERE uid = '" . $node_ownerid . "'";
+    $owner_result = db_query($sql2);
+    $owner_name = db_result($owner_result);
+  }
+  else {
+    $owner_name = "";
+  }
+  //Generate XACML
+  $xacml = new Xacml();
+  $xacml->managementRule->addUser($user_name);
+
+  if (!empty($owner_name)) {
+    $xacml->managementRule->addUser($owner_name);
+  }
+
+  $xml = $xacml->getXmlString(); //create the xacml xml
+
+  //Attach XACML
+  $fedora_item = new Fedora_Item($pid);
+  if ($fedora_item->exists()) {
+    $datastream_array = $fedora_item->get_datastreams_list_as_array();
+    if (array_key_exists('POLICY', $datastream_array)) {
+      $fedora_item->modify_datastream_by_value($xml, 'POLICY', 'Xacml Policy Stream', 'text/xml');
+    }
+    else {
+      $fedora_item->add_datastream_from_string($xml, 'POLICY', 'Xacml Policy Stream', 'text/xml', 'X');
+    }
+  }
 }
