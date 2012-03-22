@@ -5,12 +5,16 @@
  */
 
 /**
- *
- * Load fedora_item.inc from the fedora_repository module in the api folder.
- * This is used to update, delete fedora objects
- *
+ * Implementation of hook_help().
  */
-module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+function orphan_object_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help/orphan_object':
+      $output = '<p>'. t('Orphan Object Module') .'</p>';
+      $output .= '<p>'. t('This module allows for administrators to manage orphan fedora objects.  Orphan fedora objects by default are classified as any object linked to the Islandora GENERIC Collection (islandora:sp_generic_collection) which does not have a node association.  This means the object was either inserted via the digital repository, that the node it was associated with was deleted, or the islandora_upload module was uninstalled and the relationship table was cleared.  From this screen objects may be selected to be managed which is when a user can change the state or purge the object.  The other option is to select associate objects which lets a user choose to link objects to nodes which will form the node relationship, activate the object, generate public XACML and set the object view to be public.  Once this link has been completed the node will no longer and will no longer show up in the Orphan Object Administration screen.  An admin user may also throught the configuration page change the defaulted collection to define orphan objects, this could be used to associate other uploaded collections directly to node pages.') .'</p>';
+      return $output;
+  }
+}
 
 /**
  * Implementation of hook_perm().
@@ -87,7 +91,16 @@ function orphan_object_formpage(&$form_state) {
         $title = $resultitem;
       }
       $url = $base_url . "/fedora/repository/$resultitem";
-      $owner = get_file_owner_name($resultitem);
+      $url_to_curl = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
+      $url_to_curl .= "/objects?terms=$resultitem&ownerId=true&resultFormat=xml";
+      $resultxml = do_curl($url_to_curl);
+      $resultelements = simplexml_load_string($resultxml);
+      if (!empty($resultelements)) {
+        $owner = (string) $resultelements->resultList->objectFields->ownerId;
+      }
+      else {
+        $owner = "";
+      }
       $orphans[$oidcount] = array('oid' => $oidcount, 'pid' => $resultitem, 'title' => '<a href = "' . $url . '" target="_blank">' . $title . '</a>', 'owner' => $owner, 'state' => orphan_object_getState($resultitem), 'logmessage' => $history);
       $oidcount++;
     }
