@@ -9,7 +9,7 @@
  */
 function orphan_object_help($path, $arg) {
   switch ($path) {
-    case 'admin/help/orphan_object':
+    case 'admin/help#orphan_object':
       $output = '<p>'. t('Orphan Object Module') .'</p>';
       $output .= '<p>'. t('This module allows for administrators to manage orphan fedora objects.  Orphan fedora objects by default are classified as any object linked to the Islandora GENERIC Collection (islandora:sp_generic_collection) which does not have a node association.  This means the object was either inserted via the digital repository, that the node it was associated with was deleted, or the islandora_upload module was uninstalled and the relationship table was cleared.  From this screen objects may be selected to be managed which is when a user can change the state or purge the object.  The other option is to select associate objects which lets a user choose to link objects to nodes which will form the node relationship, activate the object, generate public XACML and set the object view to be public.  Once this link has been completed the node will no longer and will no longer show up in the Orphan Object Administration screen.  An admin user may also throught the configuration page change the defaulted collection to define orphan objects, this could be used to associate other uploaded collections directly to node pages.') .'</p>';
       return $output;
@@ -29,6 +29,15 @@ function orphan_object_perm() {
  */
 function orphan_object_menu() {
   $items = array();
+  $items['admin/settings/orphan-object'] = array(
+    'title' => t('Orphan Object Settings'),
+    'description' => 'Control which collection is searched.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('orphan_object_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'orphan_object.admin.inc',
+  );
   $items['admin/content/orphan-object'] = array(
     'title' => t('Orphan Object Administration'),
     'page callback' => 'orphan_object_form',
@@ -705,11 +714,14 @@ function orphan_object_getList() {
   module_load_include('inc', 'fedora_repository', 'api/fedora_utils');
   module_load_include('inc', 'fedora_repository', 'ObjectHelper');
 
-  $collectionarray = array();
+  $collectionused = variable_get('orphanobject_collection_default', 'islandora:sp_generic_collection,Islandora GENERIC Collection');
+  $colparts = explode(',', $collectionused);
+  $pid = $colparts[0];
+
 
   $collectionquery = 'select $object $title from <#ri>
                             where ($object <dc:title> $title
-                              and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/islandora:sp_generic_collection>)';
+                              and $object <fedora-rels-ext:isMemberOfCollection><info:fedora/' . $pid . '>)';
   $collectionurl = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
   $collectionurl .= "?type=tuples&flush=TRUE&format=csv&limit=1000&lang=itql&stream=on&query=";
   $collectioncontent = do_curl($collectionurl . htmlentities(urlencode($collectionquery)));
