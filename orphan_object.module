@@ -310,7 +310,7 @@ function orphan_object_formpage_submit($form, &$form_state) {
         }
       }
       else {
-        drupal_set_message(check_plain($key['identifier']) . ' has not been link to Node ID ' . $key['nid'] . ' because the node no longer exists.');
+        drupal_set_message(check_plain($key['identifier']) . ' has not been link to Node ID ' . $key['nid'] . ' because the node no longer exists or the there was no node selected.');
       }
     }
 
@@ -782,16 +782,31 @@ function orphan_object_create_xacml_policy_public($pid, $uid, $node_ownerid) {
   //Generate XACML
   $xacml = new Xacml();
   $xacml->managementRule->addUser($user_name);
-
+  $xacml->managementRule->addRole('administrators');
+  $xacml->viewingRule->addRole('administrators');
   if (!empty($owner_name)) {
     $xacml->managementRule->addUser($owner_name);
+  }
+  $obj_owner = FALSE;
+  $fedora_item = new Fedora_Item($pid);
+  if ($exist = $fedora_item->exists()) {
+    $url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
+    $url .= "/objects?terms=$pid&ownerId=true&resultFormat=xml";
+    $resultxml = do_curl($url);
+    $resultelements = simplexml_load_string($resultxml);
+    if (!empty($resultelements)) {
+      $obj_owner = (string) $resultelements->resultList->objectFields->ownerId;
+    }
+  }
+  // Prevents admin from locking owner of object out
+  if ($obj_owner != 'admin' && $obj_owner != $owner_name && $obj_owner != $user_name && $obj_owner) {
+  $xacml->managementRule->addUser($obj_owner);
   }
 
   $xml = $xacml->getXmlString(); //create the xacml xml
 
   //Attach XACML
-  $fedora_item = new Fedora_Item($pid);
-  if ($fedora_item->exists()) {
+  if ($exist) {
     $datastream_array = $fedora_item->get_datastreams_list_as_array();
     if (array_key_exists('POLICY', $datastream_array)) {
       $fedora_item->modify_datastream_by_value($xml, 'POLICY', 'Xacml Policy Stream', 'text/xml');
