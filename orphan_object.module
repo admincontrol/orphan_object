@@ -783,7 +783,6 @@ function orphan_object_create_xacml_policy_public($pid, $uid, $node_ownerid) {
   $xacml = new Xacml();
   $xacml->managementRule->addUser($user_name);
   $xacml->managementRule->addRole('administrators');
-  $xacml->viewingRule->addRole('administrators');
   if (!empty($owner_name)) {
     $xacml->managementRule->addUser($owner_name);
   }
